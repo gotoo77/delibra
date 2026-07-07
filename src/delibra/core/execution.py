@@ -7,12 +7,12 @@ from enum import Enum
 from types import MappingProxyType
 from typing import Any
 
-
-JsonPrimitive = str | int | float | bool | None
-JsonMutableValue = JsonPrimitive | dict[str, "JsonMutableValue"] | list["JsonMutableValue"]
-JsonMutableObject = dict[str, JsonMutableValue]
-JsonFrozenValue = JsonPrimitive | Mapping[str, "JsonFrozenValue"] | tuple["JsonFrozenValue", ...]
-JsonFrozenObject = Mapping[str, JsonFrozenValue]
+from delibra.core.json import (
+    JsonFrozenObject,
+    JsonFrozenValue,
+    JsonMutableObject,
+    JsonMutableValue,
+)
 
 
 class RunStatus(str, Enum):

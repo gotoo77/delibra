@@ -8,13 +8,24 @@ from delibra.core.execution import (
     TraceEvent,
     TraceEventType,
 )
+from delibra.core.protocol import (
+    Produces,
+    Protocol,
+    Role,
+    StepDefinition,
+    StepKind,
+)
 
 __all__ = [
     "Artifact",
+    "Produces",
+    "Protocol",
+    "Role",
     "Run",
     "RunStatus",
+    "StepDefinition",
+    "StepKind",
     "Trace",
     "TraceEvent",
     "TraceEventType",
 ]
-
