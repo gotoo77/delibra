@@ -17,13 +17,26 @@ from delibra.runtime.context import (
     MissingOutputError,
     ResolvedInputs,
 )
+from delibra.runtime.llm import (
+    LLMClient,
+    LLMRequest,
+    LLMResponse,
+    MockLLMClient,
+    MockLLMError,
+    create_llm_request,
+)
 
 __all__ = [
     "ExecutionContext",
     "FixedClock",
     "IdSequence",
     "InvalidRunStateError",
+    "LLMClient",
+    "LLMRequest",
+    "LLMResponse",
     "MissingOutputError",
+    "MockLLMClient",
+    "MockLLMError",
     "ResolvedInputs",
     "append_artifact",
     "append_trace_event",
@@ -31,5 +44,6 @@ __all__ = [
     "create_run",
     "create_trace",
     "create_trace_event",
+    "create_llm_request",
     "transition_run",
 ]
