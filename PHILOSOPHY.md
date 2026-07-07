@@ -1,0 +1,54 @@
+# The Zen of Delibra
+
+Models reason.
+Delibra orchestrates.
+
+Artifacts are durable.
+Messages are transient.
+
+Delibra never reasons.
+Delibra preserves reasoning.
+
+Artifact-first.
+Prompt-last.
+
+Protocols describe derivations.
+They do not encode execution logic.
+
+Steps are derivation functions.
+Runs are records of derivation.
+Trace is the event stream of derivation.
+
+Prefer explicit artifact flow.
+Avoid implicit execution.
+
+Prefer simple primitives.
+Avoid generic workflow features.
+
+Small before powerful.
+
+The core must remain boring.
+
+A protocol should explain itself.
+
+The runtime should not judge.
+The runtime should not decide.
+The runtime should not infer truth.
+
+If a feature makes Delibra look like a workflow engine,
+it probably does not belong in the core.
+
+If a feature makes the runtime smarter,
+it probably belongs in the model instead.
+
+If a concept can remain a preset,
+do not promote it into the core.
+
+If a result matters,
+make it an artifact.
+
+If a step fails,
+preserve what was already derived.
+
+When in doubt,
+preserve the artifact.
