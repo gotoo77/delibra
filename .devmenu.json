@@ -1,0 +1,184 @@
+{
+  "project": {
+    "name": "Delibra",
+    "type": "python",
+    "lang": "fr",
+    "icon": "⚖️",
+    "timeout": 900
+  },
+  "menus": {
+    "main": {
+      "title": "Delibra",
+      "items": [
+        {
+          "label": "Sync dev",
+          "icon": "📦",
+          "key": "i",
+          "argv": ["uv", "sync"],
+          "desc": "Installe l environnement Python depuis pyproject.toml et uv.lock"
+        },
+        {
+          "label": "Installer editable",
+          "icon": "🧩",
+          "key": "e",
+          "argv": ["python3", "-m", "pip", "install", "-e", "."],
+          "desc": "Installe la commande delibra dans l environnement courant"
+        },
+        {
+          "label": "Tests",
+          "icon": "🧪",
+          "key": "t",
+          "argv": ["python3", "-m", "unittest"]
+        },
+        {
+          "label": "Check complet",
+          "icon": "✅",
+          "key": "c",
+          "commands": [
+            ["python3", "-m", "unittest"],
+            ["python3", "-m", "compileall", "src", "tests", "spikes"]
+          ],
+          "desc": "Tests unitaires et compilation Python"
+        },
+        {
+          "label": "CLI",
+          "icon": "🖥️",
+          "key": "l",
+          "submenu": "cli"
+        },
+        {
+          "label": "Spike 0",
+          "icon": "🧪",
+          "key": "s",
+          "argv": ["python3", "spikes/spike_0_artifact_derivation.py"],
+          "desc": "Lance le prototype disposable d artifact derivation"
+        },
+        {
+          "label": "Docs",
+          "icon": "📚",
+          "key": "o",
+          "submenu": "docs"
+        },
+        {
+          "label": "Git branches",
+          "icon": "🌿",
+          "key": "g",
+          "submenu": "auto:git"
+        },
+        {
+          "label": "Clean",
+          "icon": "🗑️",
+          "key": "n",
+          "commands": [
+            ["rm", "-rf", "build", "dist", "src/delibra.egg-info"],
+            ["bash", "-lc", "find . -name '__pycache__' -type d -prune -exec rm -rf {} + 2>/dev/null || true"],
+            ["bash", "-lc", "find . -name '*.pyc' -delete 2>/dev/null || true"]
+          ],
+          "desc": "Supprime les artefacts de build et caches Python"
+        },
+        {
+          "label": "Historique",
+          "icon": "🕘",
+          "key": "h",
+          "action": "history"
+        },
+        {
+          "label": "Quitter",
+          "icon": "🚪",
+          "key": "x",
+          "action": "exit"
+        }
+      ]
+    },
+    "cli": {
+      "title": "Delibra - CLI",
+      "items": [
+        {
+          "label": "Aide",
+          "icon": "❔",
+          "key": "h",
+          "argv": ["delibra", "--help"]
+        },
+        {
+          "label": "Aide validate",
+          "icon": "🧭",
+          "key": "v",
+          "argv": ["delibra", "validate", "--help"]
+        },
+        {
+          "label": "Aide run",
+          "icon": "▶️",
+          "key": "r",
+          "argv": ["delibra", "run", "--help"]
+        },
+        {
+          "label": "Validate stub",
+          "icon": "🚧",
+          "key": "d",
+          "argv": ["delibra", "validate"],
+          "desc": "Doit echouer proprement tant que Lot 3 n est pas implemente"
+        },
+        {
+          "label": "Run stub",
+          "icon": "🚧",
+          "key": "u",
+          "argv": ["delibra", "run"],
+          "desc": "Doit echouer proprement tant que le runtime n est pas implemente"
+        },
+        {
+          "label": "Retour",
+          "icon": "↩️",
+          "key": "z",
+          "submenu": "main"
+        }
+      ]
+    },
+    "docs": {
+      "title": "Delibra - Docs",
+      "items": [
+        {
+          "label": "README",
+          "icon": "📄",
+          "key": "r",
+          "argv": ["sed", "-n", "1,220p", "README.md"]
+        },
+        {
+          "label": "Philosophie",
+          "icon": "⚖️",
+          "key": "p",
+          "argv": ["sed", "-n", "1,220p", "PHILOSOPHY.md"]
+        },
+        {
+          "label": "Core model",
+          "icon": "🧱",
+          "key": "m",
+          "argv": ["sed", "-n", "1,260p", "docs/core-model-v0.1.md"]
+        },
+        {
+          "label": "Backlog",
+          "icon": "📋",
+          "key": "b",
+          "argv": ["sed", "-n", "1,260p", "docs/implementation/backlog-v0.1.md"]
+        },
+        {
+          "label": "Invariants",
+          "icon": "✅",
+          "key": "i",
+          "argv": ["sed", "-n", "1,220p", "docs/implementation/invariants.md"]
+        },
+        {
+          "label": "Rapport Spike 0",
+          "icon": "🧪",
+          "key": "s",
+          "argv": ["sed", "-n", "1,240p", "docs/implementation/spike-0-report.md"]
+        },
+        {
+          "label": "Retour",
+          "icon": "↩️",
+          "key": "z",
+          "submenu": "main"
+        }
+      ]
+    }
+  }
+}
