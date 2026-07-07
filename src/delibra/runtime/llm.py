@@ -61,11 +61,7 @@ class MockLLMClient:
                 content=content,
             ),
             payload={"content": content},
-            metadata={
-                "mock": True,
-                "step_id": request.step_id,
-                "role_id": request.role_id,
-            },
+            metadata={},
         )
 
 
@@ -97,4 +93,3 @@ def _render_request_content(step: StepDefinition, role: Role) -> str:
             step.instruction,
         )
     )
-

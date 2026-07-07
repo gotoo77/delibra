@@ -62,10 +62,7 @@ class RuntimeLLMTests(unittest.TestCase):
             response.payload,
             {"content": "mock response for step frame role framer"},
         )
-        self.assertEqual(
-            response.metadata,
-            {"mock": True, "step_id": "frame", "role_id": "framer"},
-        )
+        self.assertEqual(response.metadata, {})
 
     def test_mock_provider_error_can_be_simulated(self) -> None:
         protocol = load_valid_protocol()
@@ -178,4 +175,3 @@ class RuntimeLLMTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

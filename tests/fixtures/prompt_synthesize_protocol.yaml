@@ -1,0 +1,34 @@
+id: prompt_synthesis
+version: 0.1.0
+description: Prompt then synthesize protocol.
+
+roles:
+  framer:
+    name: Framer
+    instruction: Frame the input.
+  synthesizer:
+    name: Synthesizer
+    instruction: Produce a final synthesis.
+
+steps:
+  - id: frame
+    kind: prompt
+    role: framer
+    roles: null
+    instruction: Frame the user input.
+    inputs:
+      - user_input
+    produces:
+      output: framing
+      kind: framing
+  - id: final
+    kind: synthesize
+    role: synthesizer
+    roles: null
+    instruction: Synthesize the framing.
+    inputs:
+      - framing
+    produces:
+      output: final_synthesis
+      kind: synthesis
+

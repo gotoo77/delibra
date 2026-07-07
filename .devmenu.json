@@ -126,11 +126,22 @@
           "desc": "Parse le fixture YAML et affiche le JSON canonique"
         },
         {
-          "label": "Run stub",
-          "icon": "🚧",
+          "label": "Run mock fixture",
+          "icon": "▶️",
           "key": "u",
-          "argv": ["delibra", "run"],
-          "desc": "Doit echouer proprement tant que le runtime n est pas implemente"
+          "argv": [
+            "delibra",
+            "run",
+            "--protocol",
+            "tests/fixtures/prompt_synthesize_protocol.yaml",
+            "--input-text",
+            "Why protect oceans?",
+            "--run-output",
+            "/tmp/delibra-run.json",
+            "--trace-output",
+            "/tmp/delibra-trace.json"
+          ],
+          "desc": "Execute prompt+synthesize avec le mock et ecrit run/trace dans /tmp"
         },
         {
           "label": "Retour",
