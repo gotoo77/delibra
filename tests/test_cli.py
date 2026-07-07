@@ -36,6 +36,8 @@ class CliSmokeTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0)
         self.assertIn("usage: delibra validate", result.stdout)
+        self.assertIn("--protocol", result.stdout)
+        self.assertIn("parse a protocol definition", result.stdout.lower())
 
     def test_run_help_runs_successfully(self) -> None:
         result = run_cli("run", "--help")
@@ -43,11 +45,11 @@ class CliSmokeTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0)
         self.assertIn("usage: delibra run", result.stdout)
 
-    def test_validate_fails_cleanly_until_implemented(self) -> None:
+    def test_validate_requires_protocol_path(self) -> None:
         result = run_cli("validate")
 
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("not implemented yet", result.stderr)
+        self.assertIn("--protocol", result.stderr)
         self.assertNotIn("Traceback", result.stderr)
 
     def test_run_fails_cleanly_until_implemented(self) -> None:

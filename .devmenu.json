@@ -112,11 +112,11 @@
           "argv": ["delibra", "run", "--help"]
         },
         {
-          "label": "Validate stub",
-          "icon": "🚧",
+          "label": "Validate fixture",
+          "icon": "✅",
           "key": "d",
-          "argv": ["delibra", "validate"],
-          "desc": "Doit echouer proprement tant que Lot 3 n est pas implemente"
+          "argv": ["delibra", "validate", "--protocol", "tests/fixtures/rfc_protocol.yaml"],
+          "desc": "Parse le fixture YAML et affiche le JSON canonique"
         },
         {
           "label": "Run stub",

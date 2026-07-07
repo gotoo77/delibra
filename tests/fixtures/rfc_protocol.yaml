@@ -1,0 +1,21 @@
+id: code_review
+version: 0.1.0
+description: Structured code review protocol.
+
+roles:
+  framer:
+    name: Framer
+    instruction: Restate scope and missing context.
+
+steps:
+  - id: frame
+    kind: prompt
+    role: framer
+    roles: null
+    instruction: Frame the input.
+    inputs:
+      - user_input
+    produces:
+      output: framing
+      kind: framing
+
