@@ -54,6 +54,13 @@
           "desc": "Lance le prototype disposable d artifact derivation"
         },
         {
+          "label": "Smoke Lot 5",
+          "icon": "🧱",
+          "key": "m",
+          "argv": ["python3", "-m", "delibra.runtime.smoke", "tests/fixtures/rfc_protocol.yaml"],
+          "desc": "Cree un run, un artifact, une trace et affiche le JSON"
+        },
+        {
           "label": "Docs",
           "icon": "📚",
           "key": "o",
