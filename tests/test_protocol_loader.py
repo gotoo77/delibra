@@ -24,6 +24,26 @@ EXPECTED_PROTOCOL_JSON = {
             "name": "Framer",
             "instruction": "Restate scope and missing context.",
         },
+        "maintainer": {
+            "id": "maintainer",
+            "name": "Maintainer",
+            "instruction": "Review maintainability and consistency.",
+        },
+        "tester": {
+            "id": "tester",
+            "name": "Tester",
+            "instruction": "Review tests and regressions.",
+        },
+        "security": {
+            "id": "security",
+            "name": "Security Reviewer",
+            "instruction": "Review security risks.",
+        },
+        "synthesizer": {
+            "id": "synthesizer",
+            "name": "Synthesizer",
+            "instruction": "Produce final synthesis.",
+        },
     },
     "steps": [
         {
@@ -36,6 +56,30 @@ EXPECTED_PROTOCOL_JSON = {
             "produces": {
                 "output": "framing",
                 "kind": "framing",
+            },
+        },
+        {
+            "id": "reviews",
+            "kind": "fanout",
+            "role": None,
+            "roles": ["maintainer", "tester", "security"],
+            "instruction": "Review the framed input.",
+            "inputs": ["framing"],
+            "produces": {
+                "output": "reviews",
+                "kind": "review",
+            },
+        },
+        {
+            "id": "final",
+            "kind": "synthesize",
+            "role": "synthesizer",
+            "roles": None,
+            "instruction": "Synthesize the reviews.",
+            "inputs": ["framing", "reviews"],
+            "produces": {
+                "output": "final_synthesis",
+                "kind": "synthesis",
             },
         },
     ],

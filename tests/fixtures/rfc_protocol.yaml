@@ -6,6 +6,18 @@ roles:
   framer:
     name: Framer
     instruction: Restate scope and missing context.
+  maintainer:
+    name: Maintainer
+    instruction: Review maintainability and consistency.
+  tester:
+    name: Tester
+    instruction: Review tests and regressions.
+  security:
+    name: Security Reviewer
+    instruction: Review security risks.
+  synthesizer:
+    name: Synthesizer
+    instruction: Produce final synthesis.
 
 steps:
   - id: frame
@@ -18,4 +30,27 @@ steps:
     produces:
       output: framing
       kind: framing
-
+  - id: reviews
+    kind: fanout
+    role: null
+    roles:
+      - maintainer
+      - tester
+      - security
+    instruction: Review the framed input.
+    inputs:
+      - framing
+    produces:
+      output: reviews
+      kind: review
+  - id: final
+    kind: synthesize
+    role: synthesizer
+    roles: null
+    instruction: Synthesize the reviews.
+    inputs:
+      - framing
+      - reviews
+    produces:
+      output: final_synthesis
+      kind: synthesis

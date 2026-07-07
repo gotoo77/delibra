@@ -12,3 +12,8 @@ Every implementation change must preserve this checklist.
 - kind is structural, not domain-specific.
 - No primitive beyond prompt/fanout/criticize/synthesize.
 - Trace is an event stream, not an ad hoc log.
+- Runtime behavior is deterministic given fixed protocol, input, model outputs, ids, and clock.
+- Non-determinism is isolated at provider/model boundaries.
+
+Model outputs may vary.
+Runtime derivation must not.

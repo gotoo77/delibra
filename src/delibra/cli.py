@@ -6,6 +6,7 @@ import sys
 from collections.abc import Sequence
 
 from delibra.protocol_loader import ProtocolLoadError, load_protocol_yaml
+from delibra.protocol_validator import ProtocolValidationError, validate_protocol
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -54,6 +55,11 @@ def _validate(args: argparse.Namespace) -> int:
         protocol = load_protocol_yaml(args.protocol)
     except ProtocolLoadError as exc:
         print(f"delibra validate: {exc}", file=sys.stderr)
+        return 1
+    try:
+        validate_protocol(protocol)
+    except ProtocolValidationError as exc:
+        print(f"delibra validate: invalid protocol: {exc}", file=sys.stderr)
         return 1
 
     print(json.dumps(protocol.to_json(), indent=2))
