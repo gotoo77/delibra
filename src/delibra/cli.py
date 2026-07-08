@@ -16,7 +16,7 @@ from delibra.runtime import (
     UnsupportedStepKindError,
     default_engine_ids,
     deterministic_clock,
-    execute_prompt_synthesize_protocol,
+    execute_protocol,
 )
 
 
@@ -90,7 +90,7 @@ def _run(args: argparse.Namespace) -> int:
 
     try:
         ids = default_engine_ids()
-        result = execute_prompt_synthesize_protocol(
+        result = execute_protocol(
             protocol,
             {"kind": "text", "content": args.input_text},
             llm=MockLLMClient(IdSequence("msg_response")),

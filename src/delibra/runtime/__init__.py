@@ -24,6 +24,7 @@ from delibra.runtime.engine import (
     UnsupportedStepKindError,
     default_engine_ids,
     deterministic_clock,
+    execute_protocol,
     execute_prompt_synthesize_protocol,
 )
 from delibra.runtime.llm import (
@@ -60,6 +61,7 @@ __all__ = [
     "create_llm_request",
     "default_engine_ids",
     "deterministic_clock",
+    "execute_protocol",
     "execute_prompt_synthesize_protocol",
     "transition_run",
 ]

@@ -268,6 +268,21 @@ class ProtocolValidatorTests(unittest.TestCase):
         with self.assertRaisesRegex(ProtocolValidationError, "requires non-empty roles"):
             validate_protocol(make_protocol(first, step, final))
 
+    def test_fanout_with_role_fails(self) -> None:
+        first, _, final = valid_steps()
+        step = StepDefinition(
+            id="reviews",
+            kind=StepKind.FANOUT,
+            role="maintainer",
+            roles=("tester",),
+            instruction="Review.",
+            inputs=("framing",),
+            produces=Produces(output="reviews", kind="review"),
+        )
+
+        with self.assertRaisesRegex(ProtocolValidationError, "forbids role"):
+            validate_protocol(make_protocol(first, step, final))
+
     def test_criticize_with_role_fails(self) -> None:
         first, _, final = valid_steps()
         step = StepDefinition(
@@ -281,6 +296,21 @@ class ProtocolValidatorTests(unittest.TestCase):
         )
 
         with self.assertRaisesRegex(ProtocolValidationError, "forbids role"):
+            validate_protocol(make_protocol(first, step, final))
+
+    def test_criticize_without_roles_fails(self) -> None:
+        first, _, final = valid_steps()
+        step = StepDefinition(
+            id="critiques",
+            kind=StepKind.CRITICIZE,
+            role=None,
+            roles=(),
+            instruction="Criticize.",
+            inputs=("framing",),
+            produces=Produces(output="critiques", kind="critique"),
+        )
+
+        with self.assertRaisesRegex(ProtocolValidationError, "requires non-empty roles"):
             validate_protocol(make_protocol(first, step, final))
 
     def test_synthesize_not_last_fails(self) -> None:

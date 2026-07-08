@@ -8,15 +8,23 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from delibra.core import RunStatus, TraceEventType
+from delibra.core import (
+    Produces,
+    Protocol,
+    Role,
+    RunStatus,
+    StepDefinition,
+    StepKind,
+    TraceEventType,
+)
 from delibra.protocol_loader import load_protocol_yaml
 from delibra.runtime import (
     EngineExecutionError,
     IdSequence,
     MockLLMClient,
-    UnsupportedStepKindError,
     default_engine_ids,
     deterministic_clock,
+    execute_protocol,
     execute_prompt_synthesize_protocol,
 )
 
@@ -48,6 +56,81 @@ def execute_fixture():
         ids=default_engine_ids(),
         clock=deterministic_clock(),
     )
+
+
+def execute_full_fixture():
+    protocol = load_protocol_yaml(FULL_FIXTURE)
+    return execute_protocol(
+        protocol,
+        {"kind": "text", "content": "Why protect oceans?"},
+        llm=MockLLMClient(IdSequence("msg_response")),
+        ids=default_engine_ids(),
+        clock=deterministic_clock(),
+    )
+
+
+def make_criticize_protocol() -> Protocol:
+    roles = {
+        "framer": Role("framer", "Framer", "Frame input."),
+        "maintainer": Role("maintainer", "Maintainer", "Review maintenance."),
+        "tester": Role("tester", "Tester", "Review tests."),
+        "critic": Role("critic", "Critic", "Criticize reviews."),
+        "synthesizer": Role("synthesizer", "Synthesizer", "Synthesize."),
+    }
+    return Protocol(
+        id="criticize_review",
+        version="0.1.0",
+        description="Review then criticize protocol.",
+        roles=roles,
+        steps=(
+            StepDefinition(
+                id="frame",
+                kind=StepKind.PROMPT,
+                role="framer",
+                roles=None,
+                instruction="Frame the input.",
+                inputs=("user_input",),
+                produces=Produces(output="framing", kind="framing"),
+            ),
+            StepDefinition(
+                id="reviews",
+                kind=StepKind.FANOUT,
+                role=None,
+                roles=("maintainer", "tester"),
+                instruction="Review the framing.",
+                inputs=("framing",),
+                produces=Produces(output="reviews", kind="review"),
+            ),
+            StepDefinition(
+                id="critiques",
+                kind=StepKind.CRITICIZE,
+                role=None,
+                roles=("critic", "tester"),
+                instruction="Criticize the reviews.",
+                inputs=("reviews",),
+                produces=Produces(output="critiques", kind="critique"),
+            ),
+            StepDefinition(
+                id="final",
+                kind=StepKind.SYNTHESIZE,
+                role="synthesizer",
+                roles=None,
+                instruction="Synthesize the critiques.",
+                inputs=("framing", "reviews", "critiques"),
+                produces=Produces(output="final_synthesis", kind="synthesis"),
+            ),
+        ),
+    )
+
+
+class RecordingLLMClient:
+    def __init__(self) -> None:
+        self._mock = MockLLMClient(IdSequence("msg_response"))
+        self.requests = []
+
+    def generate(self, request):
+        self.requests.append(request)
+        return self._mock.generate(request)
 
 
 class RuntimeEngineTests(unittest.TestCase):
@@ -123,17 +206,92 @@ class RuntimeEngineTests(unittest.TestCase):
             self.assertNotIn("messages", artifact)
             self.assertNotIn("message_id", artifact)
 
-    def test_fanout_is_not_supported_in_lot8(self) -> None:
-        protocol = load_protocol_yaml(FULL_FIXTURE)
+    def test_fanout_creates_multiple_artifacts_under_one_output(self) -> None:
+        result = execute_full_fixture()
 
-        with self.assertRaises(UnsupportedStepKindError):
-            execute_prompt_synthesize_protocol(
-                protocol,
-                {"kind": "text", "content": "input"},
-                llm=MockLLMClient(IdSequence("msg_response")),
-                ids=default_engine_ids(),
-                clock=deterministic_clock(),
-            )
+        reviews = [
+            artifact
+            for artifact in result.run.artifacts
+            if artifact.output == "reviews"
+        ]
+
+        self.assertEqual(result.run.status, RunStatus.COMPLETED)
+        self.assertEqual(len(result.run.artifacts), 5)
+        self.assertEqual(len(reviews), 3)
+        self.assertEqual(
+            [artifact.producer_role_id for artifact in reviews],
+            ["maintainer", "tester", "security"],
+        )
+        self.assertEqual({artifact.kind for artifact in reviews}, {"review"})
+
+    def test_fanout_step_completed_references_all_produced_artifacts(self) -> None:
+        result = execute_full_fixture()
+        reviews_completed = [
+            event
+            for event in result.trace.events
+            if event.step_id == "reviews"
+            and event.type is TraceEventType.STEP_COMPLETED
+        ]
+
+        self.assertEqual(len(reviews_completed), 1)
+        self.assertEqual(
+            reviews_completed[0].payload,
+            {"artifact_ids": ("artifact_0002", "artifact_0003", "artifact_0004")},
+        )
+
+    def test_fanout_uses_existing_durable_artifact_shape(self) -> None:
+        result = execute_full_fixture()
+        review_json = result.run.artifacts[1].to_json()
+
+        self.assertEqual(
+            set(review_json),
+            {
+                "id",
+                "kind",
+                "output",
+                "producer_step_id",
+                "producer_role_id",
+                "payload",
+                "metadata",
+                "created_at",
+            },
+        )
+        self.assertEqual(review_json["output"], "reviews")
+
+    def test_criticize_consumes_prior_outputs_and_creates_critique_artifacts(self) -> None:
+        protocol = make_criticize_protocol()
+        llm = RecordingLLMClient()
+
+        result = execute_protocol(
+            protocol,
+            {"kind": "text", "content": "input"},
+            llm=llm,
+            ids=default_engine_ids(),
+            clock=deterministic_clock(),
+        )
+        critiques = [
+            artifact
+            for artifact in result.run.artifacts
+            if artifact.output == "critiques"
+        ]
+        criticize_requests = [
+            request
+            for request in llm.requests
+            if request.step_id == "critiques"
+        ]
+
+        self.assertEqual(result.run.status, RunStatus.COMPLETED)
+        self.assertEqual(len(critiques), 2)
+        self.assertEqual([artifact.kind for artifact in critiques], ["critique", "critique"])
+        self.assertEqual(
+            [artifact.producer_role_id for artifact in critiques],
+            ["critic", "tester"],
+        )
+        self.assertEqual(len(criticize_requests), 2)
+        self.assertEqual(
+            [request.inputs["artifact_ids"] for request in criticize_requests],
+            [["artifact_0002", "artifact_0003"], ["artifact_0002", "artifact_0003"]],
+        )
 
     def test_failed_execution_preserves_partial_run_and_trace(self) -> None:
         protocol = load_protocol_yaml(FIXTURE)
