@@ -1,0 +1,73 @@
+id: decision_review
+version: 0.1.0
+description: Structured decision review protocol.
+
+roles:
+  framer:
+    name: Framer
+    instruction: Restate the decision, options, constraints, assumptions, and stakes.
+  strategist:
+    name: Strategist
+    instruction: Review strategic fit, reversibility, opportunity cost, and timing.
+  risk_reviewer:
+    name: Risk Reviewer
+    instruction: Review downside risk, unknowns, mitigation options, and failure modes.
+  operator:
+    name: Operator
+    instruction: Review implementation practicality, sequencing, ownership, and operational cost.
+  critic:
+    name: Critic
+    instruction: Challenge the reviews for missing options, false certainty, and biased framing.
+  synthesizer:
+    name: Synthesizer
+    instruction: Produce a final decision review with recommendation, tradeoffs, and residual risk.
+
+steps:
+  - id: frame
+    kind: prompt
+    role: framer
+    roles: null
+    instruction: Frame the decision under review.
+    inputs:
+      - user_input
+    produces:
+      output: framing
+      kind: framing
+  - id: role_reviews
+    kind: fanout
+    role: null
+    roles:
+      - strategist
+      - risk_reviewer
+      - operator
+    instruction: Review the framed decision from your role.
+    inputs:
+      - framing
+    produces:
+      output: reviews
+      kind: review
+  - id: critique_reviews
+    kind: criticize
+    role: null
+    roles:
+      - critic
+      - risk_reviewer
+    instruction: Critique the reviews and identify missing decision pressure.
+    inputs:
+      - framing
+      - reviews
+    produces:
+      output: critiques
+      kind: critique
+  - id: final
+    kind: synthesize
+    role: synthesizer
+    roles: null
+    instruction: Synthesize the framing, reviews, and critiques into a final decision review.
+    inputs:
+      - framing
+      - reviews
+      - critiques
+    produces:
+      output: final_synthesis
+      kind: synthesis

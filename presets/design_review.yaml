@@ -1,0 +1,73 @@
+id: design_review
+version: 0.1.0
+description: Structured design review protocol.
+
+roles:
+  framer:
+    name: Framer
+    instruction: Restate the design goal, constraints, assumptions, and unresolved questions.
+  architect:
+    name: Architect
+    instruction: Review structure, boundaries, evolution risk, and fit with existing systems.
+  operator:
+    name: Operator
+    instruction: Review deployability, observability, operability, and failure handling.
+  user_advocate:
+    name: User Advocate
+    instruction: Review usability, workflow fit, and user-facing tradeoffs.
+  critic:
+    name: Critic
+    instruction: Challenge design assumptions, hidden coupling, and unsupported claims.
+  synthesizer:
+    name: Synthesizer
+    instruction: Produce a final design review with decisions, tradeoffs, and open risks.
+
+steps:
+  - id: frame
+    kind: prompt
+    role: framer
+    roles: null
+    instruction: Frame the design proposal.
+    inputs:
+      - user_input
+    produces:
+      output: framing
+      kind: framing
+  - id: role_reviews
+    kind: fanout
+    role: null
+    roles:
+      - architect
+      - operator
+      - user_advocate
+    instruction: Review the framed design from your role.
+    inputs:
+      - framing
+    produces:
+      output: reviews
+      kind: review
+  - id: critique_reviews
+    kind: criticize
+    role: null
+    roles:
+      - critic
+      - architect
+    instruction: Critique the reviews and surface unresolved design tension.
+    inputs:
+      - framing
+      - reviews
+    produces:
+      output: critiques
+      kind: critique
+  - id: final
+    kind: synthesize
+    role: synthesizer
+    roles: null
+    instruction: Synthesize the framing, reviews, and critiques into a final design review.
+    inputs:
+      - framing
+      - reviews
+      - critiques
+    produces:
+      output: final_synthesis
+      kind: synthesis
