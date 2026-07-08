@@ -50,6 +50,17 @@ delibra inspect --run run.json
 delibra inspect --run run.json --trace trace.json
 ```
 
+Run a real-use code review scenario:
+
+```bash
+scripts/run_real_code_review.sh
+PROVIDER=mock scripts/run_real_code_review.sh
+PROVIDER=openai OPENAI_API_KEY=... OPENAI_MODEL=... scripts/run_real_code_review.sh
+scripts/run_real_code_review.sh HEAD~2..HEAD
+```
+
+This scenario runs the `code_review` preset against a real Git diff and writes disposable outputs to a temporary directory by default. It is not a test fixture. Mock is safe and default; OpenAI is opt-in. Do not commit generated `input.patch`, `run.json`, `trace.json`, or `inspect.txt` files.
+
 Run tests:
 
 ```bash
