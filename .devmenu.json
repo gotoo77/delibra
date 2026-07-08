@@ -144,6 +144,13 @@
           "desc": "Execute prompt+synthesize avec le mock et ecrit run/trace dans /tmp"
         },
         {
+          "label": "Scenario code review",
+          "icon": "🔎",
+          "key": "s",
+          "argv": ["scripts/run_real_code_review.sh"],
+          "desc": "Lance le preset code_review sur un vrai git diff. Produit input.patch, run.json, trace.json, inspect.txt et final_synthesis.txt dans un dossier temporaire affiche en fin de commande"
+        },
+        {
           "label": "Retour",
           "icon": "↩️",
           "key": "z",

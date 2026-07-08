@@ -50,11 +50,84 @@ class RealScenarioScriptTests(unittest.TestCase):
             )
 
             self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("waiting for delibra run", result.stdout)
             self.assertIn("Delibra real code review scenario complete.", result.stdout)
             self.assertTrue((output / "input.patch").exists())
             self.assertTrue((output / "run.json").exists())
             self.assertTrue((output / "trace.json").exists())
             self.assertTrue((output / "inspect.txt").exists())
+            self.assertTrue((output / "final_synthesis.txt").exists())
+            self.assertIn(
+                "mock response for step final role synthesizer",
+                (output / "final_synthesis.txt").read_text(encoding="utf-8"),
+            )
+            self.assertEqual((output / "input.patch").stat().st_mode & 0o777, 0o600)
+
+    def test_script_rejects_invalid_explicit_range(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "repo"
+            output = Path(tmp) / "output"
+            repo.mkdir()
+
+            subprocess.run(["git", "init"], cwd=repo, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=repo, check=True)
+            subprocess.run(["git", "config", "user.name", "Test User"], cwd=repo, check=True)
+            (repo / "example.txt").write_text("first\n", encoding="utf-8")
+            subprocess.run(["git", "add", "example.txt"], cwd=repo, check=True)
+            subprocess.run(["git", "commit", "-m", "Initial"], cwd=repo, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+            env = os.environ.copy()
+            env["PROVIDER"] = "mock"
+            env["DELIBRA_OUTPUT_DIR"] = str(output)
+            env["DELIBRA_GIT_ROOT"] = str(repo)
+            env["DELIBRA_BIN"] = f"{sys.executable} -m delibra"
+            env["PYTHONPATH"] = str(ROOT / "src")
+
+            result = subprocess.run(
+                [str(SCRIPT), "not-a-real-ref..also-not-real"],
+                cwd=ROOT,
+                env=env,
+                check=False,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("invalid git range", result.stderr)
+
+    def test_script_rejects_empty_diff(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "repo"
+            output = Path(tmp) / "output"
+            repo.mkdir()
+
+            subprocess.run(["git", "init"], cwd=repo, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=repo, check=True)
+            subprocess.run(["git", "config", "user.name", "Test User"], cwd=repo, check=True)
+            (repo / "example.txt").write_text("first\n", encoding="utf-8")
+            subprocess.run(["git", "add", "example.txt"], cwd=repo, check=True)
+            subprocess.run(["git", "commit", "-m", "Initial"], cwd=repo, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+            env = os.environ.copy()
+            env["PROVIDER"] = "mock"
+            env["DELIBRA_OUTPUT_DIR"] = str(output)
+            env["DELIBRA_GIT_ROOT"] = str(repo)
+            env["DELIBRA_BIN"] = f"{sys.executable} -m delibra"
+            env["PYTHONPATH"] = str(ROOT / "src")
+
+            result = subprocess.run(
+                [str(SCRIPT)],
+                cwd=ROOT,
+                env=env,
+                check=False,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("No diff found. Nothing to review.", result.stderr)
 
     def test_openai_provider_requires_environment(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

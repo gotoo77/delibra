@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import contextlib
+import io
 import unittest
 
 from delibra.core import TraceEventType
@@ -189,6 +191,54 @@ class RuntimeLLMTests(unittest.TestCase):
                 env={"OPENAI_API_KEY": "test-key"},
             )
 
+    def test_openai_from_env_accepts_timeout_configuration(self) -> None:
+        client = OpenAIClient.from_env(
+            response_message_ids=IdSequence("msg"),
+            env={
+                "OPENAI_API_KEY": "test-key",
+                "OPENAI_MODEL": "test-model",
+                "OPENAI_TIMEOUT_SECONDS": "180",
+            },
+            transport=lambda _config, _payload: {"output_text": "ok"},
+        )
+
+        self.assertEqual(client.config.timeout_seconds, 180.0)
+
+    def test_openai_from_env_accepts_max_output_tokens_configuration(self) -> None:
+        client = OpenAIClient.from_env(
+            response_message_ids=IdSequence("msg"),
+            env={
+                "OPENAI_API_KEY": "test-key",
+                "OPENAI_MODEL": "test-model",
+                "OPENAI_MAX_OUTPUT_TOKENS": "1200",
+            },
+            transport=lambda _config, _payload: {"output_text": "ok"},
+        )
+
+        self.assertEqual(client.config.max_output_tokens, 1200)
+
+    def test_openai_from_env_rejects_invalid_timeout_configuration(self) -> None:
+        with self.assertRaisesRegex(OpenAIConfigError, "OPENAI_TIMEOUT_SECONDS"):
+            OpenAIClient.from_env(
+                response_message_ids=IdSequence("msg"),
+                env={
+                    "OPENAI_API_KEY": "test-key",
+                    "OPENAI_MODEL": "test-model",
+                    "OPENAI_TIMEOUT_SECONDS": "0",
+                },
+            )
+
+    def test_openai_from_env_rejects_invalid_max_output_tokens_configuration(self) -> None:
+        with self.assertRaisesRegex(OpenAIConfigError, "OPENAI_MAX_OUTPUT_TOKENS"):
+            OpenAIClient.from_env(
+                response_message_ids=IdSequence("msg"),
+                env={
+                    "OPENAI_API_KEY": "test-key",
+                    "OPENAI_MODEL": "test-model",
+                    "OPENAI_MAX_OUTPUT_TOKENS": "0",
+                },
+            )
+
     def test_openai_client_normalizes_text_response(self) -> None:
         protocol = load_valid_protocol()
         step = protocol.steps[0]
@@ -220,10 +270,125 @@ class RuntimeLLMTests(unittest.TestCase):
 
         self.assertEqual(calls[0][0].model, "test-model")
         self.assertEqual(calls[0][1]["model"], "test-model")
+        self.assertEqual(calls[0][1]["max_output_tokens"], 800)
         self.assertIn("Resolved inputs:", calls[0][1]["input"])
         self.assertEqual(response.message.id, "msg_response_0001")
         self.assertEqual(response.payload, {"content": "normalized content"})
         self.assertEqual(response.metadata, {})
+
+    def test_openai_client_extracts_responses_api_message_output_text(self) -> None:
+        protocol = load_valid_protocol()
+        step = protocol.steps[0]
+        role = protocol.roles["framer"]
+        request = create_llm_request(
+            step,
+            role,
+            message_ids=IdSequence("msg"),
+            inputs={"user_input": {"content": "input"}, "artifact_ids": [], "artifacts": []},
+        )
+
+        def transport(_config, _payload):
+            return {
+                "status": "completed",
+                "output": [
+                    {"type": "reasoning", "content": [], "summary": []},
+                    {
+                        "type": "message",
+                        "content": [
+                            {
+                                "type": "output_text",
+                                "text": "message content",
+                            }
+                        ],
+                    },
+                ],
+            }
+
+        client = OpenAIClient.from_env(
+            response_message_ids=IdSequence("msg_response"),
+            env={"OPENAI_API_KEY": "test-key", "OPENAI_MODEL": "test-model"},
+            transport=transport,
+        )
+
+        response = client.generate(request)
+
+        self.assertEqual(response.payload, {"content": "message content"})
+
+    def test_openai_no_text_response_error_includes_shape_diagnostics(self) -> None:
+        protocol = load_valid_protocol()
+        step = protocol.steps[0]
+        role = protocol.roles["framer"]
+        request = create_llm_request(
+            step,
+            role,
+            message_ids=IdSequence("msg"),
+            inputs={"user_input": {"content": "input"}, "artifact_ids": [], "artifacts": []},
+        )
+
+        def transport(_config, _payload):
+            return {
+                "status": "incomplete",
+                "incomplete_details": {"reason": "max_output_tokens"},
+                "output": [
+                    {"type": "reasoning", "content": [], "summary": []},
+                ],
+            }
+
+        client = OpenAIClient.from_env(
+            response_message_ids=IdSequence("msg_response"),
+            env={
+                "OPENAI_API_KEY": "test-key",
+                "OPENAI_MODEL": "test-model",
+                "DELIBRA_DEBUG_PROVIDER": "1",
+            },
+            transport=transport,
+        )
+
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr):
+            with self.assertRaises(OpenAIProviderError) as raised:
+                client.generate(request)
+
+        message = str(raised.exception)
+        self.assertIn("status=incomplete", message)
+        self.assertIn("incomplete_reason=max_output_tokens", message)
+        self.assertIn("output_types=reasoning", message)
+        self.assertIn("no text output", stderr.getvalue())
+
+    def test_openai_debug_provider_logs_runtime_diagnostics_only(self) -> None:
+        protocol = load_valid_protocol()
+        step = protocol.steps[0]
+        role = protocol.roles["framer"]
+        request = create_llm_request(
+            step,
+            role,
+            message_ids=IdSequence("msg"),
+            inputs={"user_input": {"content": "input"}, "artifact_ids": [], "artifacts": []},
+        )
+
+        client = OpenAIClient.from_env(
+            response_message_ids=IdSequence("msg_response"),
+            env={
+                "OPENAI_API_KEY": "test-key",
+                "OPENAI_MODEL": "test-model",
+                "OPENAI_TIMEOUT_SECONDS": "45",
+                "OPENAI_MAX_OUTPUT_TOKENS": "123",
+                "DELIBRA_DEBUG_PROVIDER": "1",
+            },
+            transport=lambda _config, _payload: {"output_text": "normalized content"},
+        )
+
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr):
+            client.generate(request)
+
+        debug_output = stderr.getvalue()
+        self.assertIn("delibra.openai:", debug_output)
+        self.assertIn("model=test-model", debug_output)
+        self.assertIn("timeout_seconds=45", debug_output)
+        self.assertIn("max_output_tokens=123", debug_output)
+        self.assertIn("input_chars=", debug_output)
+        self.assertNotIn("test-key", debug_output)
 
     def test_openai_provider_error_becomes_runtime_failure_with_trace(self) -> None:
         protocol = load_valid_protocol()
