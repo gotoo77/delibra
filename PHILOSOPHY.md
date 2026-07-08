@@ -3,6 +3,12 @@
 Models reason.
 Delibra orchestrates.
 
+Delibra is not an agent framework.
+Delibra is an artifact-first derivation runtime with durable provenance.
+
+Execution is an implementation detail.
+Derivation is the domain model.
+
 Artifacts are durable.
 Messages are transient.
 
@@ -15,6 +21,9 @@ Prompting is an implementation detail.
 Protocols describe derivations.
 They do not encode execution logic.
 
+Protocols describe knowledge derivation.
+They do not describe execution.
+
 Steps are derivation functions.
 Runs are records of derivation.
 Trace is the event stream of derivation.
@@ -26,6 +35,8 @@ Prefer simple primitives.
 Avoid generic workflow features.
 
 Small before powerful.
+
+The core should continuously get smaller as the ecosystem grows.
 
 The core must remain boring.
 
