@@ -6,10 +6,14 @@ from delibra.core import TraceEventType
 from delibra.protocol_loader import load_protocol_yaml
 from delibra.protocol_validator import validate_protocol
 from delibra.runtime import (
+    EngineExecutionError,
     FixedClock,
     IdSequence,
     MockLLMClient,
     MockLLMError,
+    OpenAIClient,
+    OpenAIConfigError,
+    OpenAIProviderError,
     append_artifact,
     append_trace_event,
     create_artifact,
@@ -17,6 +21,9 @@ from delibra.runtime import (
     create_run,
     create_trace,
     create_trace_event,
+    default_engine_ids,
+    deterministic_clock,
+    execute_protocol,
 )
 
 
@@ -171,6 +178,133 @@ class RuntimeLLMTests(unittest.TestCase):
         self.assertNotIn("message", run_json["artifacts"][0])
         self.assertNotIn("messages", run_json["artifacts"][0])
         self.assertNotIn("message_id", run_json["artifacts"][0])
+
+    def test_openai_from_env_requires_api_key_and_model(self) -> None:
+        with self.assertRaisesRegex(OpenAIConfigError, "OPENAI_API_KEY"):
+            OpenAIClient.from_env(response_message_ids=IdSequence("msg"), env={})
+
+        with self.assertRaisesRegex(OpenAIConfigError, "OPENAI_MODEL"):
+            OpenAIClient.from_env(
+                response_message_ids=IdSequence("msg"),
+                env={"OPENAI_API_KEY": "test-key"},
+            )
+
+    def test_openai_client_normalizes_text_response(self) -> None:
+        protocol = load_valid_protocol()
+        step = protocol.steps[0]
+        role = protocol.roles["framer"]
+        request = create_llm_request(
+            step,
+            role,
+            message_ids=IdSequence("msg"),
+            inputs={"user_input": {"content": "input"}, "artifact_ids": [], "artifacts": []},
+        )
+        calls = []
+
+        def transport(config, payload):
+            calls.append((config, payload))
+            return {
+                "id": "resp_provider_id",
+                "model": "provider-model",
+                "usage": {"input_tokens": 1, "output_tokens": 1},
+                "output_text": "normalized content",
+            }
+
+        client = OpenAIClient.from_env(
+            response_message_ids=IdSequence("msg_response"),
+            env={"OPENAI_API_KEY": "test-key", "OPENAI_MODEL": "test-model"},
+            transport=transport,
+        )
+
+        response = client.generate(request)
+
+        self.assertEqual(calls[0][0].model, "test-model")
+        self.assertEqual(calls[0][1]["model"], "test-model")
+        self.assertIn("Resolved inputs:", calls[0][1]["input"])
+        self.assertEqual(response.message.id, "msg_response_0001")
+        self.assertEqual(response.payload, {"content": "normalized content"})
+        self.assertEqual(response.metadata, {})
+
+    def test_openai_provider_error_becomes_runtime_failure_with_trace(self) -> None:
+        protocol = load_valid_protocol()
+
+        def transport(_config, _payload):
+            raise OpenAIProviderError("provider exploded")
+
+        client = OpenAIClient.from_env(
+            response_message_ids=IdSequence("msg_response"),
+            env={"OPENAI_API_KEY": "test-key", "OPENAI_MODEL": "test-model"},
+            transport=transport,
+        )
+
+        with self.assertRaises(EngineExecutionError) as raised:
+            execute_protocol(
+                protocol,
+                {"kind": "text", "content": "input"},
+                llm=client,
+                ids=default_engine_ids(),
+                clock=deterministic_clock(),
+            )
+
+        result = raised.exception.result
+        self.assertEqual(str(raised.exception), "provider exploded")
+        self.assertEqual(result.run.status.value, "failed")
+        self.assertEqual(
+            [event.type for event in result.trace.events],
+            [
+                TraceEventType.STEP_STARTED,
+                TraceEventType.MESSAGE_SENT,
+                TraceEventType.STEP_FAILED,
+                TraceEventType.RUN_FAILED,
+            ],
+        )
+
+    def test_openai_provider_metadata_does_not_enter_run_or_artifact_json(self) -> None:
+        protocol = load_valid_protocol()
+
+        def transport(_config, _payload):
+            return {
+                "id": "resp_provider_id",
+                "model": "provider-model",
+                "usage": {"input_tokens": 10, "output_tokens": 5},
+                "output_text": "provider content",
+            }
+
+        client = OpenAIClient.from_env(
+            response_message_ids=IdSequence("msg_response"),
+            env={"OPENAI_API_KEY": "test-key", "OPENAI_MODEL": "test-model"},
+            transport=transport,
+        )
+
+        result = execute_protocol(
+            protocol,
+            {"kind": "text", "content": "input"},
+            llm=client,
+            ids=default_engine_ids(),
+            clock=deterministic_clock(),
+        )
+        run_json = result.run.to_json()
+        trace_json = result.trace.to_json()
+
+        self.assertNotIn("provider", run_json)
+        self.assertNotIn("model", run_json)
+        self.assertNotIn("usage", run_json)
+        for artifact in run_json["artifacts"]:
+            self.assertEqual(artifact["payload"], {"content": "provider content"})
+            self.assertEqual(artifact["metadata"], {})
+            self.assertNotIn("provider", artifact)
+            self.assertNotIn("model", artifact)
+            self.assertNotIn("usage", artifact)
+        self.assertNotIn("provider", trace_json)
+        self.assertNotIn("model", trace_json)
+        self.assertNotIn("usage", trace_json)
+        for event in trace_json["events"]:
+            self.assertNotIn("provider", event)
+            self.assertNotIn("model", event)
+            self.assertNotIn("usage", event)
+            self.assertNotIn("provider", event["payload"])
+            self.assertNotIn("model", event["payload"])
+            self.assertNotIn("usage", event["payload"])
 
 
 if __name__ == "__main__":

@@ -13,6 +13,9 @@ from delibra.runtime import (
     IdSequence,
     MockLLMClient,
     MockLLMError,
+    OpenAIClient,
+    OpenAIConfigError,
+    OpenAIProviderError,
     UnsupportedStepKindError,
     default_engine_ids,
     deterministic_clock,
@@ -45,6 +48,12 @@ def build_parser() -> argparse.ArgumentParser:
         description="Run a protocol with the mock LLM.",
     )
     run.add_argument("--protocol", required=True, help="path to a protocol YAML file")
+    run.add_argument(
+        "--provider",
+        choices=("mock", "openai"),
+        default="mock",
+        help="LLM provider to use; defaults to mock",
+    )
     run.add_argument("--input-text", required=True, help="text input for the run")
     run.add_argument("--run-output", required=True, help="path to write run JSON")
     run.add_argument("--trace-output", required=True, help="path to write trace JSON")
@@ -93,7 +102,7 @@ def _run(args: argparse.Namespace) -> int:
         result = execute_protocol(
             protocol,
             {"kind": "text", "content": args.input_text},
-            llm=MockLLMClient(IdSequence("msg_response")),
+            llm=_build_llm_client(args.provider),
             ids=ids,
             clock=deterministic_clock(),
         )
@@ -101,12 +110,27 @@ def _run(args: argparse.Namespace) -> int:
         _write_run_outputs(args, exc.result)
         print(f"delibra run: {exc}", file=sys.stderr)
         return 1
-    except (ProtocolValidationError, UnsupportedStepKindError, MockLLMError, ValueError) as exc:
+    except (
+        ProtocolValidationError,
+        UnsupportedStepKindError,
+        MockLLMError,
+        OpenAIConfigError,
+        OpenAIProviderError,
+        ValueError,
+    ) as exc:
         print(f"delibra run: {exc}", file=sys.stderr)
         return 1
 
     _write_run_outputs(args, result)
     return 0
+
+
+def _build_llm_client(provider: str):
+    if provider == "mock":
+        return MockLLMClient(IdSequence("msg_response"))
+    if provider == "openai":
+        return OpenAIClient.from_env(response_message_ids=IdSequence("msg_response"))
+    raise ValueError(f"unsupported provider: {provider}")
 
 
 def _write_run_outputs(args: argparse.Namespace, result) -> None:

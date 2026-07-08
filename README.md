@@ -18,9 +18,33 @@ delibra validate --help
 delibra run --help
 ```
 
+Run with the default mock provider:
+
+```bash
+delibra run \
+  --protocol presets/code_review.yaml \
+  --provider mock \
+  --input-text "Review this change." \
+  --run-output run.json \
+  --trace-output trace.json
+```
+
+Run with OpenAI:
+
+```bash
+export OPENAI_API_KEY=...
+export OPENAI_MODEL=...
+
+delibra run \
+  --protocol presets/code_review.yaml \
+  --provider openai \
+  --input-text "Review this change." \
+  --run-output run.json \
+  --trace-output trace.json
+```
+
 Run tests:
 
 ```bash
 python3 -m unittest
 ```
-

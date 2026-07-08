@@ -259,6 +259,7 @@ def _execute_step_for_role(
                 if resolved_inputs.user_input is None
                 else dict(resolved_inputs.user_input),
                 "artifact_ids": list(resolved_inputs.artifact_ids),
+                "artifacts": _resolve_input_artifacts(run, resolved_inputs.artifact_ids),
             },
         )
         trace = append_trace_event(
@@ -315,6 +316,11 @@ def _execute_step_for_role(
         return run, trace, context, artifact.id
     except Exception as exc:
         raise _StepRoleExecutionError(run, trace, exc) from exc
+
+
+def _resolve_input_artifacts(run: Run, artifact_ids: tuple[str, ...]) -> list[JsonMutableObject]:
+    artifacts_by_id = {artifact.id: artifact for artifact in run.artifacts}
+    return [artifacts_by_id[artifact_id].to_json() for artifact_id in artifact_ids]
 
 
 def default_engine_ids() -> EngineIds:

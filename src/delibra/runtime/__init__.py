@@ -35,6 +35,12 @@ from delibra.runtime.llm import (
     MockLLMError,
     create_llm_request,
 )
+from delibra.runtime.openai import (
+    OpenAIClient,
+    OpenAIConfig,
+    OpenAIConfigError,
+    OpenAIProviderError,
+)
 
 __all__ = [
     "ExecutionContext",
@@ -50,6 +56,10 @@ __all__ = [
     "MissingOutputError",
     "MockLLMClient",
     "MockLLMError",
+    "OpenAIClient",
+    "OpenAIConfig",
+    "OpenAIConfigError",
+    "OpenAIProviderError",
     "ResolvedInputs",
     "UnsupportedStepKindError",
     "append_artifact",
