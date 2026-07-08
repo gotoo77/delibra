@@ -2,6 +2,7 @@
 
 - [Delibra Core Model v0.1](core-model-v0.1.md)
 - [ADR-0001 - Delibra Core Identity](adr/0001-core-identity.md)
+- [ADR-0002 - Runtime Provider Boundary](adr/0002-runtime-provider-boundary.md)
 - [Concept Notes](concepts/README.md)
 - [AI Systems Engineering](implementation/ai-systems-engineering.md)
 
