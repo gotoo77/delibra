@@ -26,7 +26,8 @@ The runtime may optimize how derivation steps execute, but it must not change wh
 - Reusing already-derived artifacts when reuse preserves derivation semantics.
 - Avoiding redundant context where the protocol does not require it.
 - Prompt or request deduplication inside runtime boundaries.
-- Context compaction or summarization as an execution strategy when it preserves the declared derivation.
+- Information-preserving context compaction inside runtime boundaries.
+- Lossy optimization only when the protocol explicitly allows lossy execution.
 - Provider-independent budgeting and preflight estimation.
 - Provider-specific cost and token observations as runtime diagnostics only.
 
@@ -36,6 +37,7 @@ The runtime may optimize how derivation steps execute, but it must not change wh
 - Provider-specific optimization concepts entering the durable core.
 - Token usage, cost, model metadata, or provider usage objects in `Artifact`, `Run`, `Trace`, `Protocol`, `StepDefinition`, or `Produces`.
 - Modifying durable artifacts to reduce execution cost.
+- Lossy summarization or context reduction without explicit protocol consent.
 - Treating provider token accounting as the architecture model for efficiency.
 - Adding cache, replay, memory, tools, branching, or persistence formats under this ADR.
 
@@ -46,5 +48,7 @@ Efficient execution is a runtime quality, not a core entity.
 Future cost-related features should first prove that they preserve derivation semantics and provider boundaries.
 
 Observed provider cost may inform runtime diagnostics, but durable provenance remains provider-agnostic.
+
+By default, execution should remain information-preserving. Lossy optimization requires explicit protocol consent.
 
 If an optimization changes which artifacts are derived, when they are derived, or which inputs they represent, it is not an optimization; it is a protocol or core-model change and requires separate governance.
