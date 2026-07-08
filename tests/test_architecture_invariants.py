@@ -173,6 +173,21 @@ class ArchitectureInvariantTests(unittest.TestCase):
                 self.assertNotIn("message", event["payload"])
                 self.assertNotIn("messages", event["payload"])
 
+    def test_trace_may_reference_message_ids_without_persisting_messages(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            _, trace_path = make_run_outputs(tmp)
+            trace_json = json.loads(trace_path.read_text(encoding="utf-8"))
+            message_events = [
+                event
+                for event in trace_json["events"]
+                if event["type"] in ("MessageSent", "MessageReceived")
+            ]
+
+            self.assertGreater(len(message_events), 0)
+            for event in message_events:
+                self.assertIn("message_id", event["payload"])
+                self.assertEqual(set(event["payload"]), {"message_id"})
+
     def test_presets_use_only_v0_1_primitives(self) -> None:
         for path in sorted(PRESETS.glob("*.yaml")):
             with self.subTest(path=path):
