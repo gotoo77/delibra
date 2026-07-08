@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 from collections.abc import Sequence
 
+from delibra.core import Run, Trace
 from delibra.protocol_loader import ProtocolLoadError, load_protocol_yaml
 from delibra.protocol_validator import ProtocolValidationError, validate_protocol
 from delibra.runtime import (
@@ -58,6 +59,15 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--run-output", required=True, help="path to write run JSON")
     run.add_argument("--trace-output", required=True, help="path to write trace JSON")
     run.set_defaults(handler=_run)
+
+    inspect = subparsers.add_parser(
+        "inspect",
+        help="inspect canonical run and trace JSON",
+        description="Inspect canonical run and trace JSON.",
+    )
+    inspect.add_argument("--run", required=True, help="path to canonical run JSON")
+    inspect.add_argument("--trace", help="path to canonical trace JSON")
+    inspect.set_defaults(handler=_inspect)
 
     return parser
 
@@ -139,6 +149,65 @@ def _write_run_outputs(args: argparse.Namespace, result) -> None:
         json.dumps(result.trace.to_json(), indent=2),
         encoding="utf-8",
     )
+
+
+def _inspect(args: argparse.Namespace) -> int:
+    try:
+        run = _load_run_json(args.run)
+        trace = None if args.trace is None else _load_trace_json(args.trace)
+        if trace is not None and trace.run_id != run.id:
+            raise ValueError("trace run_id does not match run id")
+    except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
+        print(f"delibra inspect: {exc}", file=sys.stderr)
+        return 1
+
+    print(_render_inspection(run, trace))
+    return 0
+
+
+def _load_run_json(path: str) -> Run:
+    try:
+        raw = Path(path).read_text(encoding="utf-8")
+    except FileNotFoundError as exc:
+        raise FileNotFoundError(f"run file not found: {path}") from exc
+    return Run.from_json(_load_json_object(raw, "run JSON"))
+
+
+def _load_trace_json(path: str) -> Trace:
+    try:
+        raw = Path(path).read_text(encoding="utf-8")
+    except FileNotFoundError as exc:
+        raise FileNotFoundError(f"trace file not found: {path}") from exc
+    return Trace.from_json(_load_json_object(raw, "trace JSON"))
+
+
+def _load_json_object(raw: str, name: str):
+    data = json.loads(raw)
+    if not isinstance(data, dict):
+        raise TypeError(f"{name} must be a JSON object")
+    return data
+
+
+def _render_inspection(run: Run, trace: Trace | None) -> str:
+    protocol = run.protocol
+    lines = [
+        f"run: {run.id}",
+        f"status: {run.status.value}",
+        f"protocol: {protocol['id']}@{protocol['version']}",
+        f"artifacts: {len(run.artifacts)}",
+        "artifact_summary:",
+    ]
+    for artifact in run.artifacts:
+        lines.append(
+            "  "
+            f"- output={artifact.output} "
+            f"kind={artifact.kind} "
+            f"producer_step_id={artifact.producer_step_id} "
+            f"producer_role_id={artifact.producer_role_id}"
+        )
+    if trace is not None:
+        lines.append(f"trace_events: {len(trace.events)}")
+    return "\n".join(lines)
 
 
 def _not_implemented(command: str):

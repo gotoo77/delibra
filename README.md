@@ -43,6 +43,13 @@ delibra run \
   --trace-output trace.json
 ```
 
+Inspect canonical outputs:
+
+```bash
+delibra inspect --run run.json
+delibra inspect --run run.json --trace trace.json
+```
+
 Run tests:
 
 ```bash

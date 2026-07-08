@@ -55,6 +55,14 @@ class CliSmokeTests(unittest.TestCase):
         self.assertIn("--run-output", result.stdout)
         self.assertIn("--trace-output", result.stdout)
 
+    def test_inspect_help_runs_successfully(self) -> None:
+        result = run_cli("inspect", "--help")
+
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("usage: delibra inspect", result.stdout)
+        self.assertIn("--run", result.stdout)
+        self.assertIn("--trace", result.stdout)
+
     def test_validate_requires_protocol_path(self) -> None:
         result = run_cli("validate")
 
