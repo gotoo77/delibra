@@ -8,6 +8,10 @@ from collections.abc import Sequence
 from delibra import __version__
 from delibra.app.analysis import RunAnalysis, analyze_run
 from delibra.app.inspection import RunInspection, inspect_run
+from delibra.app.local_diagnostics import (
+    LocalDiagnostics,
+    diagnose_local_providers,
+)
 from delibra.app.providers import build_llm_client
 from delibra.app.storage import load_run_json, load_trace_json, write_run_outputs
 from delibra.policy_loader import PolicyLoadError, load_policy_yaml
@@ -95,6 +99,19 @@ def build_parser() -> argparse.ArgumentParser:
     analyze_run.add_argument("--run", required=True, help="path to canonical run JSON")
     analyze_run.add_argument("--trace", help="path to canonical trace JSON")
     analyze_run.set_defaults(handler=_analyze_run)
+
+    doctor = subparsers.add_parser(
+        "doctor",
+        help="diagnose local Delibra environment",
+        description="Diagnose local Delibra environment.",
+    )
+    doctor_subparsers = doctor.add_subparsers(dest="doctor_command", metavar="COMMAND")
+    doctor_local = doctor_subparsers.add_parser(
+        "local",
+        help="diagnose local LLM providers",
+        description="Diagnose local LLM providers without installing or writing files.",
+    )
+    doctor_local.set_defaults(handler=_doctor_local)
 
     return parser
 
@@ -245,6 +262,12 @@ def _analyze_run(args: argparse.Namespace) -> int:
     return 0
 
 
+def _doctor_local(_args: argparse.Namespace) -> int:
+    diagnostics = diagnose_local_providers()
+    print(_render_local_diagnostics(diagnostics))
+    return 0
+
+
 def _render_inspection(inspection: RunInspection) -> str:
     lines = [
         f"run: {inspection.run_id}",
@@ -359,6 +382,45 @@ def _render_run_analysis(analysis: RunAnalysis) -> str:
 
     lines.extend(["", "Limitations", "-----------"])
     lines.extend(f"- {item}" for item in analysis.limitations)
+    return "\n".join(lines)
+
+
+def _render_local_diagnostics(diagnostics: LocalDiagnostics) -> str:
+    lines = [
+        "Local provider diagnostics",
+        "--------------------------",
+    ]
+    if not diagnostics.statuses:
+        lines.append("- no local provider probes configured")
+        return "\n".join(lines)
+
+    found_any = False
+    for status in diagnostics.statuses:
+        marker = "ok" if status.reachable else "not reachable"
+        lines.append(f"- {status.label} ({status.base_url}): {marker}")
+        if status.models:
+            found_any = True
+            lines.append(f"  models: {', '.join(status.models)}")
+        elif status.reachable:
+            found_any = True
+            lines.append("  models: none reported")
+        if status.error is not None:
+            lines.append(f"  error: {status.error}")
+        if status.recovery_hint is not None:
+            lines.append(f"  recovery: {status.recovery_hint}")
+
+    lines.extend(["", "Next steps"])
+    if found_any:
+        lines.append(
+            "- Choose a provider and model explicitly in an execution policy route."
+        )
+        lines.append("- Delibra did not install anything or choose a model for you.")
+    else:
+        lines.append(
+            "- Start a local provider such as Ollama or an OpenAI-compatible local "
+            "server, then rerun `delibra doctor local`."
+        )
+        lines.append("- Delibra did not install anything or write any files.")
     return "\n".join(lines)
 
 

@@ -16,6 +16,7 @@ from delibra.protocol_validator import validate_protocol
 
 ROOT = Path(__file__).resolve().parents[1]
 CORE = ROOT / "src" / "delibra" / "core"
+RUNTIME = ROOT / "src" / "delibra" / "runtime"
 PRESETS = ROOT / "presets"
 CONCEPTS = ROOT / "docs" / "concepts"
 ALLOWED_PRIMITIVES = {"prompt", "fanout", "criticize", "synthesize"}
@@ -108,6 +109,21 @@ class ArchitectureInvariantTests(unittest.TestCase):
         self.assertNotIn("OpenAI", core_source)
         self.assertNotIn("Provider", core_source)
         self.assertNotIn("delibra.runtime.openai", core_source)
+
+    def test_core_and_runtime_do_not_import_application_layer(self) -> None:
+        for directory in (CORE, RUNTIME):
+            for path in directory.glob("*.py"):
+                with self.subTest(path=path):
+                    imports = imported_modules(path)
+
+                    self.assertFalse(
+                        any(
+                            name == "delibra.app"
+                            or name.startswith("delibra.app.")
+                            for name in imports
+                        ),
+                        imports,
+                    )
 
     def test_durable_models_reject_unknown_fields(self) -> None:
         artifact_json = {
