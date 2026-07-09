@@ -24,3 +24,11 @@ Potential protocol experiments:
 - novelty constraint
 - adversarial creativity role
 - idea selection before final synthesis
+
+OpenAI API log:
+- Final synthesizer call observed in OpenAI logs.
+- Input tokens: 11,201
+- Output tokens: 800
+- Observation: the final synthesis receives a large accumulated context from previous artifacts.
+- This supports the analyze-run warning about fan-in/context pressure before artifact_0011.
+- The final output is structured but comparatively compressed, suggesting the protocol may benefit from selection/compression before final synthesis.
