@@ -2,6 +2,9 @@
 
 Every implementation change must preserve this checklist.
 
+See also [Architecture Principles](../architecture-principles.md) for the
+project-level guardrails behind this implementation checklist.
+
 - Delibra never reasons; models reason.
 - Artifacts are immutable.
 - Steps create artifacts; they never mutate artifacts.
@@ -14,6 +17,7 @@ Every implementation change must preserve this checklist.
 - Trace is an event stream, not an ad hoc log.
 - Runtime behavior is deterministic given fixed protocol, input, model outputs, ids, and clock.
 - Non-determinism is isolated at provider/model boundaries.
+- When CLI behavior, providers, primitives, or commands change, update CLI help and documented examples in the same change.
 
 Model outputs may vary.
 Runtime derivation must not.

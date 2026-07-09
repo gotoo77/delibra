@@ -37,6 +37,15 @@ class CliSmokeTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0)
         self.assertIn("usage: delibra", result.stdout)
+        self.assertIn("run a protocol with the selected provider", result.stdout)
+        self.assertNotIn("run a protocol with the mock LLM", result.stdout)
+
+    def test_version_runs_successfully(self) -> None:
+        result = run_cli("--version")
+
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stderr, "")
+        self.assertRegex(result.stdout.strip(), r"^delibra \d+\.\d+\.\d+$")
 
     def test_validate_help_runs_successfully(self) -> None:
         result = run_cli("validate", "--help")
@@ -51,7 +60,12 @@ class CliSmokeTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0)
         self.assertIn("usage: delibra run", result.stdout)
+        self.assertIn("Run a protocol with the selected provider.", result.stdout)
         self.assertIn("--provider", result.stdout)
+        self.assertIn("{mock,openai,ollama}", result.stdout)
+        self.assertIn("provider: mock, openai, ollama; default mock", result.stdout)
+        self.assertIn("--progress", result.stdout)
+        self.assertNotIn("mock LLM", result.stdout)
         self.assertIn("--run-output", result.stdout)
         self.assertIn("--trace-output", result.stdout)
 
@@ -60,6 +74,14 @@ class CliSmokeTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0)
         self.assertIn("usage: delibra inspect", result.stdout)
+        self.assertIn("--run", result.stdout)
+        self.assertIn("--trace", result.stdout)
+
+    def test_analyze_run_help_runs_successfully(self) -> None:
+        result = run_cli("analyze-run", "--help")
+
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("usage: delibra analyze-run", result.stdout)
         self.assertIn("--run", result.stdout)
         self.assertIn("--trace", result.stdout)
 
@@ -121,6 +143,36 @@ class CliSmokeTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0)
             self.assertEqual(result.stderr, "")
 
+    def test_run_progress_writes_status_to_stderr_only(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            run_output = Path(tmp) / "run.json"
+            trace_output = Path(tmp) / "trace.json"
+
+            result = run_cli(
+                "run",
+                "--protocol",
+                str(ROOT / "tests" / "fixtures" / "rfc_protocol.yaml"),
+                "--provider",
+                "mock",
+                "--input-text",
+                "Review this change.",
+                "--run-output",
+                str(run_output),
+                "--trace-output",
+                str(trace_output),
+                "--progress",
+            )
+
+            self.assertEqual(result.returncode, 0)
+            self.assertEqual(result.stdout, "")
+            self.assertIn("delibra run: started", result.stderr)
+            self.assertIn("provider=mock", result.stderr)
+            self.assertIn("delibra run: step started step=reviews kind=fanout", result.stderr)
+            self.assertIn("delibra run: role started step=reviews role=maintainer", result.stderr)
+            self.assertIn("delibra run: completed artifacts=5", result.stderr)
+            self.assertTrue(run_output.exists())
+            self.assertTrue(trace_output.exists())
+
     def test_openai_provider_missing_config_fails_cleanly(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             result = run_cli(
@@ -143,6 +195,27 @@ class CliSmokeTests(unittest.TestCase):
 
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("OPENAI_API_KEY", result.stderr)
+            self.assertNotIn("Traceback", result.stderr)
+
+    def test_ollama_provider_missing_config_fails_cleanly(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            result = run_cli(
+                "run",
+                "--protocol",
+                str(ROOT / "presets" / "code_review.yaml"),
+                "--provider",
+                "ollama",
+                "--input-text",
+                "Review this change.",
+                "--run-output",
+                str(Path(tmp) / "run.json"),
+                "--trace-output",
+                str(Path(tmp) / "trace.json"),
+                env_overrides={"OLLAMA_MODEL": None},
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("OLLAMA_MODEL", result.stderr)
             self.assertNotIn("Traceback", result.stderr)
 
 

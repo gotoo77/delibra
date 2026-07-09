@@ -42,14 +42,46 @@ delibra run \
   --provider openai \
   --input-text "Review this change." \
   --run-output run.json \
-  --trace-output trace.json
+  --trace-output trace.json \
+  --progress
 ```
+
+Use `--progress` for long runs to print step and role progress to stderr without
+changing the machine-readable run and trace output files.
+
+Run with local Ollama:
+
+```bash
+ollama pull llama3.2
+
+export OLLAMA_MODEL=llama3.2
+export OLLAMA_BASE_URL=http://localhost:11434
+export OLLAMA_TIMEOUT_SECONDS=180
+export OLLAMA_MAX_OUTPUT_TOKENS=1200
+
+delibra run \
+  --protocol presets/code_review.yaml \
+  --provider ollama \
+  --input-text "Review this change." \
+  --run-output run.json \
+  --trace-output trace.json \
+  --progress
+```
+
+`OLLAMA_BASE_URL` defaults to `http://localhost:11434`.
+`OLLAMA_MAX_OUTPUT_TOKENS` maps to Ollama `options.num_predict`.
 
 Inspect canonical outputs:
 
 ```bash
 delibra inspect --run run.json
 delibra inspect --run run.json --trace trace.json
+```
+
+Analyze run health metrics:
+
+```bash
+delibra analyze-run --run run.json --trace trace.json
 ```
 
 Run a real-use code review scenario:

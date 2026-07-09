@@ -20,7 +20,9 @@ from delibra.runtime.context import (
 from delibra.runtime.engine import (
     EngineIds,
     EngineExecutionError,
+    EngineProgressEvent,
     EngineResult,
+    ProgressCallback,
     UnsupportedStepKindError,
     default_engine_ids,
     deterministic_clock,
@@ -41,6 +43,12 @@ from delibra.runtime.openai import (
     OpenAIConfigError,
     OpenAIProviderError,
 )
+from delibra.runtime.ollama import (
+    OllamaClient,
+    OllamaConfig,
+    OllamaConfigError,
+    OllamaProviderError,
+)
 
 __all__ = [
     "ExecutionContext",
@@ -49,6 +57,7 @@ __all__ = [
     "InvalidRunStateError",
     "EngineIds",
     "EngineExecutionError",
+    "EngineProgressEvent",
     "EngineResult",
     "LLMClient",
     "LLMRequest",
@@ -60,6 +69,11 @@ __all__ = [
     "OpenAIConfig",
     "OpenAIConfigError",
     "OpenAIProviderError",
+    "OllamaClient",
+    "OllamaConfig",
+    "OllamaConfigError",
+    "OllamaProviderError",
+    "ProgressCallback",
     "ResolvedInputs",
     "UnsupportedStepKindError",
     "append_artifact",

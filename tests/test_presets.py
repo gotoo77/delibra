@@ -20,6 +20,7 @@ PRESET_PATHS = (
     ROOT / "presets" / "code_review.yaml",
     ROOT / "presets" / "design_review.yaml",
     ROOT / "presets" / "decision_review.yaml",
+    ROOT / "presets" / "treasure_hunt_design.yaml",
 )
 
 
@@ -132,6 +133,36 @@ class PresetTests(unittest.TestCase):
                     self.assertEqual(set(artifact), expected_artifact_fields)
                     self.assertNotIn("message", artifact)
                     self.assertNotIn("messages", artifact)
+
+    def test_treasure_hunt_design_preset_shape(self) -> None:
+        protocol = load_protocol_yaml(ROOT / "presets" / "treasure_hunt_design.yaml")
+        result = execute_protocol(
+            protocol,
+            {
+                "kind": "text",
+                "content": (ROOT / "examples" / "treasure_hunt_design_input.md").read_text(
+                    encoding="utf-8"
+                ),
+            },
+            llm=MockLLMClient(IdSequence("msg_response")),
+            ids=default_engine_ids(),
+            clock=deterministic_clock(),
+        )
+
+        self.assertEqual(result.run.status, RunStatus.COMPLETED)
+        self.assertEqual(protocol.steps[0].produces.output, "game_dna")
+        self.assertEqual(protocol.steps[0].kind, StepKind.PROMPT)
+        self.assertEqual(protocol.steps[-1].kind, StepKind.SYNTHESIZE)
+        self.assertEqual(result.run.artifacts[-1].output, "final_synthesis")
+        self.assertEqual(
+            {step.kind for step in protocol.steps},
+            {
+                StepKind.PROMPT,
+                StepKind.FANOUT,
+                StepKind.CRITICIZE,
+                StepKind.SYNTHESIZE,
+            },
+        )
 
 
 if __name__ == "__main__":

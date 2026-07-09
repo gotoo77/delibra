@@ -175,6 +175,32 @@ class InspectTests(unittest.TestCase):
             self.assertIn("trace run_id does not match run id", result.stderr)
             self.assertNotIn("Traceback", result.stderr)
 
+    def test_cli_analyze_run_reports_observable_metrics(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            run_path, trace_path = create_run_and_trace(tmp)
+
+            result = run_cli(
+                "analyze-run",
+                "--run",
+                str(run_path),
+                "--trace",
+                str(trace_path),
+            )
+
+            self.assertEqual(result.returncode, 0)
+            self.assertEqual(result.stderr, "")
+            self.assertIn("Protocol metrics", result.stdout)
+            self.assertIn("protocol: code_review@0.1.0", result.stdout)
+            self.assertIn("artifacts: 7", result.stdout)
+            self.assertIn("trace_events:", result.stdout)
+            self.assertIn("Artifact sizes", result.stdout)
+            self.assertIn("Fanout-like steps", result.stdout)
+            self.assertIn("- role_reviews: 3 roles", result.stdout)
+            self.assertIn("Critique-like steps", result.stdout)
+            self.assertIn("- critique_reviews: 2 roles", result.stdout)
+            self.assertIn("Context pressure estimates", result.stdout)
+            self.assertIn("Limitations", result.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

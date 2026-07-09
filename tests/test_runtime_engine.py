@@ -323,6 +323,37 @@ class RuntimeEngineTests(unittest.TestCase):
         self.assertEqual(result.trace.events[-2].payload, {"step_id": "final"})
         self.assertEqual(result.trace.events[-1].payload, {"step_id": "final"})
 
+    def test_progress_callback_reports_run_steps_roles_and_artifact_counts(self) -> None:
+        protocol = make_criticize_protocol()
+        events = []
+
+        result = execute_protocol(
+            protocol,
+            {"kind": "text", "content": "input"},
+            llm=MockLLMClient(IdSequence("msg_response")),
+            ids=default_engine_ids(),
+            clock=deterministic_clock(),
+            progress=events.append,
+        )
+
+        self.assertEqual(result.run.status, RunStatus.COMPLETED)
+        self.assertEqual(events[0].type, "run_started")
+        self.assertEqual(events[0].artifact_count, 0)
+        self.assertEqual(events[-1].type, "run_completed")
+        self.assertEqual(events[-1].artifact_count, 6)
+        self.assertIn(
+            ("role_started", "reviews", "maintainer"),
+            [(event.type, event.step_id, event.role_id) for event in events],
+        )
+        self.assertIn(
+            ("role_started", "critiques", "critic"),
+            [(event.type, event.step_id, event.role_id) for event in events],
+        )
+        self.assertIn(
+            ("step_completed", "reviews", 2),
+            [(event.type, event.step_id, event.artifact_count) for event in events],
+        )
+
     def test_cli_run_writes_run_and_trace_json(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             run_output = Path(tmp) / "run.json"

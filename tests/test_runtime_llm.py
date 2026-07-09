@@ -13,6 +13,9 @@ from delibra.runtime import (
     IdSequence,
     MockLLMClient,
     MockLLMError,
+    OllamaClient,
+    OllamaConfigError,
+    OllamaProviderError,
     OpenAIClient,
     OpenAIConfigError,
     OpenAIProviderError,
@@ -470,6 +473,124 @@ class RuntimeLLMTests(unittest.TestCase):
             self.assertNotIn("provider", event["payload"])
             self.assertNotIn("model", event["payload"])
             self.assertNotIn("usage", event["payload"])
+
+    def test_ollama_from_env_requires_model(self) -> None:
+        with self.assertRaisesRegex(OllamaConfigError, "OLLAMA_MODEL"):
+            OllamaClient.from_env(response_message_ids=IdSequence("msg"), env={})
+
+    def test_ollama_from_env_accepts_base_url_timeout_and_output_limit(self) -> None:
+        client = OllamaClient.from_env(
+            response_message_ids=IdSequence("msg"),
+            env={
+                "OLLAMA_MODEL": "llama3.2",
+                "OLLAMA_BASE_URL": "http://ollama.test:11434",
+                "OLLAMA_TIMEOUT_SECONDS": "90",
+                "OLLAMA_MAX_OUTPUT_TOKENS": "512",
+            },
+            transport=lambda _config, _payload: {"response": "ok"},
+        )
+
+        self.assertEqual(client.config.model, "llama3.2")
+        self.assertEqual(client.config.base_url, "http://ollama.test:11434")
+        self.assertEqual(client.config.timeout_seconds, 90.0)
+        self.assertEqual(client.config.max_output_tokens, 512)
+
+    def test_ollama_from_env_rejects_invalid_timeout_and_output_limit(self) -> None:
+        with self.assertRaisesRegex(OllamaConfigError, "OLLAMA_TIMEOUT_SECONDS"):
+            OllamaClient.from_env(
+                response_message_ids=IdSequence("msg"),
+                env={"OLLAMA_MODEL": "llama3.2", "OLLAMA_TIMEOUT_SECONDS": "0"},
+            )
+        with self.assertRaisesRegex(OllamaConfigError, "OLLAMA_MAX_OUTPUT_TOKENS"):
+            OllamaClient.from_env(
+                response_message_ids=IdSequence("msg"),
+                env={"OLLAMA_MODEL": "llama3.2", "OLLAMA_MAX_OUTPUT_TOKENS": "0"},
+            )
+
+    def test_ollama_client_normalizes_generate_response(self) -> None:
+        protocol = load_valid_protocol()
+        step = protocol.steps[0]
+        role = protocol.roles["framer"]
+        request = create_llm_request(
+            step,
+            role,
+            message_ids=IdSequence("msg"),
+            inputs={"user_input": {"content": "input"}, "artifact_ids": [], "artifacts": []},
+        )
+        calls = []
+
+        def transport(config, payload):
+            calls.append((config, payload))
+            return {"model": "llama3.2", "response": "local content", "done": True}
+
+        client = OllamaClient.from_env(
+            response_message_ids=IdSequence("msg_response"),
+            env={"OLLAMA_MODEL": "llama3.2", "OLLAMA_MAX_OUTPUT_TOKENS": "256"},
+            transport=transport,
+        )
+
+        response = client.generate(request)
+
+        self.assertEqual(calls[0][0].model, "llama3.2")
+        self.assertEqual(calls[0][1]["model"], "llama3.2")
+        self.assertEqual(calls[0][1]["stream"], False)
+        self.assertEqual(calls[0][1]["options"], {"num_predict": 256})
+        self.assertIn("Resolved inputs:", calls[0][1]["prompt"])
+        self.assertEqual(response.message.id, "msg_response_0001")
+        self.assertEqual(response.payload, {"content": "local content"})
+        self.assertEqual(response.metadata, {})
+
+    def test_ollama_error_response_is_clear(self) -> None:
+        protocol = load_valid_protocol()
+        step = protocol.steps[0]
+        role = protocol.roles["framer"]
+        request = create_llm_request(
+            step,
+            role,
+            message_ids=IdSequence("msg"),
+            inputs={"user_input": {"content": "input"}, "artifact_ids": [], "artifacts": []},
+        )
+        client = OllamaClient.from_env(
+            response_message_ids=IdSequence("msg_response"),
+            env={"OLLAMA_MODEL": "missing-model"},
+            transport=lambda _config, _payload: {"error": "model not found"},
+        )
+
+        with self.assertRaisesRegex(OllamaProviderError, "model not found"):
+            client.generate(request)
+
+    def test_ollama_provider_metadata_does_not_enter_run_or_artifact_json(self) -> None:
+        protocol = load_valid_protocol()
+        client = OllamaClient.from_env(
+            response_message_ids=IdSequence("msg_response"),
+            env={"OLLAMA_MODEL": "llama3.2"},
+            transport=lambda _config, _payload: {
+                "model": "llama3.2",
+                "response": "local content",
+                "done": True,
+                "eval_count": 5,
+            },
+        )
+
+        result = execute_protocol(
+            protocol,
+            {"kind": "text", "content": "input"},
+            llm=client,
+            ids=default_engine_ids(),
+            clock=deterministic_clock(),
+        )
+        run_json = result.run.to_json()
+        trace_json = result.trace.to_json()
+
+        self.assertNotIn("provider", run_json)
+        self.assertNotIn("model", run_json)
+        for artifact in run_json["artifacts"]:
+            self.assertEqual(artifact["payload"], {"content": "local content"})
+            self.assertEqual(artifact["metadata"], {})
+            self.assertNotIn("provider", artifact)
+            self.assertNotIn("model", artifact)
+        self.assertNotIn("provider", trace_json)
+        self.assertNotIn("model", trace_json)
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from delibra.core import Protocol, Run, RunStatus, StepDefinition, StepKind, Trace, TraceEventType
@@ -36,6 +37,22 @@ class EngineIds:
 
 
 @dataclass(frozen=True)
+class EngineProgressEvent:
+    type: str
+    run_id: str
+    protocol_id: str
+    protocol_version: str
+    step_id: str | None = None
+    step_kind: str | None = None
+    role_id: str | None = None
+    artifact_id: str | None = None
+    artifact_count: int | None = None
+
+
+ProgressCallback = Callable[[EngineProgressEvent], None]
+
+
+@dataclass(frozen=True)
 class UnsupportedStepKindError(Exception):
     step_id: str
     kind: StepKind
@@ -67,6 +84,7 @@ def execute_prompt_synthesize_protocol(
     llm: LLMClient,
     ids: EngineIds,
     clock: FixedClock,
+    progress: ProgressCallback | None = None,
 ) -> EngineResult:
     return execute_protocol(
         protocol,
@@ -74,6 +92,7 @@ def execute_prompt_synthesize_protocol(
         llm=llm,
         ids=ids,
         clock=clock,
+        progress=progress,
     )
 
 
@@ -84,6 +103,7 @@ def execute_protocol(
     llm: LLMClient,
     ids: EngineIds,
     clock: FixedClock,
+    progress: ProgressCallback | None = None,
 ) -> EngineResult:
     validate_protocol(protocol)
 
@@ -98,6 +118,12 @@ def execute_protocol(
 
     run = transition_run(run, RunStatus.VALIDATED, clock=clock)
     run = transition_run(run, RunStatus.RUNNING, clock=clock)
+    _emit_progress(
+        progress,
+        "run_started",
+        run,
+        artifact_count=len(run.artifacts),
+    )
     context = ExecutionContext.from_run(run)
 
     for step in protocol.steps:
@@ -110,9 +136,16 @@ def execute_protocol(
             llm=llm,
             ids=ids,
             clock=clock,
+            progress=progress,
         )
 
     run = transition_run(run, RunStatus.COMPLETED, clock=clock)
+    _emit_progress(
+        progress,
+        "run_completed",
+        run,
+        artifact_count=len(run.artifacts),
+    )
     return EngineResult(run=run, trace=trace)
 
 
@@ -126,7 +159,16 @@ def _execute_step(
     llm: LLMClient,
     ids: EngineIds,
     clock: FixedClock,
+    progress: ProgressCallback | None,
 ) -> tuple[Run, Trace, ExecutionContext]:
+    _emit_progress(
+        progress,
+        "step_started",
+        run,
+        step_id=step.id,
+        step_kind=step.kind.value,
+        artifact_count=len(run.artifacts),
+    )
     trace = append_trace_event(
         trace,
         create_trace_event(
@@ -152,6 +194,7 @@ def _execute_step(
                 llm=llm,
                 ids=ids,
                 clock=clock,
+                progress=progress,
             )
             produced_artifact_ids.append(artifact_id)
 
@@ -165,6 +208,14 @@ def _execute_step(
                 step_id=step.id,
                 payload={"artifact_ids": produced_artifact_ids},
             ),
+        )
+        _emit_progress(
+            progress,
+            "step_completed",
+            run,
+            step_id=step.id,
+            step_kind=step.kind.value,
+            artifact_count=len(produced_artifact_ids),
         )
     except _StepRoleExecutionError as exc:
         run = exc.run
@@ -182,6 +233,14 @@ def _execute_step(
             ),
         )
         run = transition_run(run, RunStatus.FAILED, clock=clock)
+        _emit_progress(
+            progress,
+            "run_failed",
+            run,
+            step_id=step.id,
+            step_kind=step.kind.value,
+            artifact_count=len(run.artifacts),
+        )
         trace = append_trace_event(
             trace,
             create_trace_event(
@@ -207,6 +266,14 @@ def _execute_step(
             ),
         )
         run = transition_run(run, RunStatus.FAILED, clock=clock)
+        _emit_progress(
+            progress,
+            "run_failed",
+            run,
+            step_id=step.id,
+            step_kind=step.kind.value,
+            artifact_count=len(run.artifacts),
+        )
         trace = append_trace_event(
             trace,
             create_trace_event(
@@ -246,8 +313,18 @@ def _execute_step_for_role(
     llm: LLMClient,
     ids: EngineIds,
     clock: FixedClock,
+    progress: ProgressCallback | None,
 ) -> tuple[Run, Trace, ExecutionContext, str]:
     try:
+        _emit_progress(
+            progress,
+            "role_started",
+            run,
+            step_id=step.id,
+            step_kind=step.kind.value,
+            role_id=role_id,
+            artifact_count=len(run.artifacts),
+        )
         resolved_inputs = context.resolve_step_inputs(step)
         role = protocol.roles[role_id]
         request = create_llm_request(
@@ -313,9 +390,48 @@ def _execute_step_for_role(
                 },
             ),
         )
+        _emit_progress(
+            progress,
+            "role_completed",
+            run,
+            step_id=step.id,
+            step_kind=step.kind.value,
+            role_id=role_id,
+            artifact_id=artifact.id,
+            artifact_count=len(run.artifacts),
+        )
         return run, trace, context, artifact.id
     except Exception as exc:
         raise _StepRoleExecutionError(run, trace, exc) from exc
+
+
+def _emit_progress(
+    progress: ProgressCallback | None,
+    event_type: str,
+    run: Run,
+    *,
+    step_id: str | None = None,
+    step_kind: str | None = None,
+    role_id: str | None = None,
+    artifact_id: str | None = None,
+    artifact_count: int | None = None,
+) -> None:
+    if progress is None:
+        return
+    protocol = run.protocol
+    progress(
+        EngineProgressEvent(
+            type=event_type,
+            run_id=run.id,
+            protocol_id=protocol["id"],
+            protocol_version=protocol["version"],
+            step_id=step_id,
+            step_kind=step_kind,
+            role_id=role_id,
+            artifact_id=artifact_id,
+            artifact_count=artifact_count,
+        )
+    )
 
 
 def _resolve_input_artifacts(run: Run, artifact_ids: tuple[str, ...]) -> list[JsonMutableObject]:

@@ -755,3 +755,71 @@ This is a cleanup and risk-reduction lot only.
 - Slipping feature work into hardening.
 - Changing the frozen core model instead of fixing implementation drift.
 - Treating provider output quality as a core-model issue.
+
+## Future Notes: Run Observation And Execution Policy
+
+These notes are intentionally outside the v0.1 lot sequence. They capture design
+signals observed during real creative runs, without turning them into immediate
+scope.
+
+### meta.observe
+
+Delibra should eventually make provider/runtime cost observable enough to explain
+why a run was expensive or cognitively heavy.
+
+Candidate provider metrics:
+
+- request chars;
+- response chars;
+- duration ms;
+- provider;
+- model;
+- max output tokens;
+- later, if available cleanly: input tokens, output tokens, estimated cost.
+
+These metrics belong to runtime observability, not artifact content. They should
+not leak prompts, responses, API keys, raw provider payloads, or provider-specific
+objects into durable business artifacts.
+
+Working invariant:
+
+- A Delibra run should produce useful artifacts and enough execution metrics to
+  understand its own cognitive cost.
+
+### Execution Policy, Not Runtime Intelligence
+
+Context optimization is one case of a broader class of execution concerns:
+compression, summarization, splitting, cache use, retry policy, provider routing,
+model choice, token budgets, and generation parameters.
+
+These should not make the core runtime intelligent. Delibra's runtime should
+remain boring, deterministic, and predictable: it executes declared protocols and
+explicit configuration. It should not silently decide to compress, summarize,
+change provider, change model, or alter generation settings.
+
+There are three separable layers:
+
+- Runtime: applies the protocol and explicit execution configuration.
+- Execution policy: declarative knobs the runtime can apply without inference.
+- Optimizer or client: optional external layer that may analyze cost, redundancy,
+  and budget before choosing an explicit policy or preparing context.
+
+Prompt or context compression should not be applied blindly. User input can
+contain priorities, corrections, hesitation, and intent signals that aggressive
+compression may erase.
+
+Future context optimization, if introduced, should be observable and reversible:
+
+- preserve the raw input;
+- measure length, redundancy, ambiguity, and estimated cost;
+- either receive an explicit policy or happen in an optimizer/client layer before
+  the runtime call;
+- record what transformation happened and why;
+- avoid making context optimization a new DSL primitive unless a later design
+  explicitly justifies it.
+
+Working invariant:
+
+- Delibra may apply explicit context policies, but raw intent must remain
+  recoverable and every transformation must be observable.
+- Optimization must never silently change the semantics of a run.
