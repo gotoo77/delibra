@@ -143,6 +143,16 @@ class InspectTests(unittest.TestCase):
             self.assertIn("delibra inspect:", result.stderr)
             self.assertNotIn("Traceback", result.stderr)
 
+    def test_cli_inspect_missing_run_file_message_is_unchanged(self) -> None:
+        result = run_cli("inspect", "--run", "missing-run.json")
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(
+            "delibra inspect: run file not found: missing-run.json",
+            result.stderr,
+        )
+        self.assertNotIn("Traceback", result.stderr)
+
     def test_cli_inspect_wrong_durable_shape_fails_cleanly(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             run_path = Path(tmp) / "run.json"
@@ -173,6 +183,25 @@ class InspectTests(unittest.TestCase):
 
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("trace run_id does not match run id", result.stderr)
+            self.assertNotIn("Traceback", result.stderr)
+
+    def test_cli_analyze_missing_trace_file_message_is_unchanged(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            run_path, _ = create_run_and_trace(tmp)
+
+            result = run_cli(
+                "analyze-run",
+                "--run",
+                str(run_path),
+                "--trace",
+                "missing-trace.json",
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                "delibra analyze-run: trace file not found: missing-trace.json",
+                result.stderr,
+            )
             self.assertNotIn("Traceback", result.stderr)
 
     def test_cli_analyze_run_reports_observable_metrics(self) -> None:

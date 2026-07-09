@@ -136,6 +136,52 @@ class CliSmokeTests(unittest.TestCase):
             self.assertTrue(run_output.exists())
             self.assertTrue(trace_output.exists())
 
+    def test_run_default_and_explicit_mock_provider_produce_same_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            default_run_output = tmp_path / "default-run.json"
+            default_trace_output = tmp_path / "default-trace.json"
+            explicit_run_output = tmp_path / "explicit-run.json"
+            explicit_trace_output = tmp_path / "explicit-trace.json"
+
+            default_result = run_cli(
+                "run",
+                "--protocol",
+                str(ROOT / "presets" / "code_review.yaml"),
+                "--input-text",
+                "Review this change.",
+                "--run-output",
+                str(default_run_output),
+                "--trace-output",
+                str(default_trace_output),
+            )
+            explicit_result = run_cli(
+                "run",
+                "--protocol",
+                str(ROOT / "presets" / "code_review.yaml"),
+                "--provider",
+                "mock",
+                "--input-text",
+                "Review this change.",
+                "--run-output",
+                str(explicit_run_output),
+                "--trace-output",
+                str(explicit_trace_output),
+            )
+
+            self.assertEqual(default_result.returncode, 0)
+            self.assertEqual(explicit_result.returncode, 0)
+            self.assertEqual(default_result.stderr, "")
+            self.assertEqual(explicit_result.stderr, "")
+            self.assertEqual(
+                json.loads(default_run_output.read_text(encoding="utf-8")),
+                json.loads(explicit_run_output.read_text(encoding="utf-8")),
+            )
+            self.assertEqual(
+                json.loads(default_trace_output.read_text(encoding="utf-8")),
+                json.loads(explicit_trace_output.read_text(encoding="utf-8")),
+            )
+
     def test_run_accepts_valid_policy_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
