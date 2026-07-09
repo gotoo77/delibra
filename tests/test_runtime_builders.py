@@ -13,6 +13,7 @@ from delibra.protocol_validator import validate_protocol
 from delibra.runtime import (
     FixedClock,
     IdSequence,
+    SystemClock,
     append_artifact,
     append_trace_event,
     create_artifact,
@@ -61,6 +62,19 @@ def run_python_module(*args: str) -> subprocess.CompletedProcess[str]:
 
 
 class RuntimeBuilderTests(unittest.TestCase):
+    def test_fixed_clock_raises_when_exhausted(self) -> None:
+        clock = FixedClock(("2026-07-07T10:00:00Z",))
+
+        self.assertEqual(clock.now(), "2026-07-07T10:00:00Z")
+        with self.assertRaisesRegex(RuntimeError, "fixed clock exhausted"):
+            clock.now()
+
+    def test_system_clock_returns_utc_iso_timestamp(self) -> None:
+        timestamp = SystemClock().now()
+
+        self.assertTrue(timestamp.endswith("Z"))
+        self.assertIn("T", timestamp)
+
     def test_create_run_in_created_status(self) -> None:
         run = create_run(
             load_valid_protocol(),

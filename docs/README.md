@@ -67,3 +67,6 @@ Limitations: this preset only uses the current runtime primitives (`prompt`,
 validation, external fact checking, stateful play simulation, or a custom game
 generator. Those are future design questions, not requirements for this first
 usable pass.
+
+In v0.1, multi-role `fanout` and `criticize` steps are executed sequentially by
+the runtime.

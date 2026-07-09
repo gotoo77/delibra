@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from dataclasses import dataclass, replace
+from typing import Protocol as TypingProtocol
 
 from delibra.core import (
     Artifact,
@@ -30,6 +32,11 @@ ALLOWED_TRANSITIONS = {
     RunStatus.FAILED: set(),
     RunStatus.CANCELLED: set(),
 }
+
+
+class Clock(TypingProtocol):
+    def now(self) -> str:
+        ...
 
 
 @dataclass
@@ -62,13 +69,19 @@ class FixedClock:
         return self.timestamps[index]
 
 
+@dataclass(frozen=True)
+class SystemClock:
+    def now(self) -> str:
+        return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
 def create_run(
     protocol: Protocol,
     input_ref: JsonMutableObject,
     *,
     run_ids: IdSequence,
     trace_ids: IdSequence,
-    clock: FixedClock,
+    clock: Clock,
 ) -> Run:
     return Run(
         id=run_ids.next(),
@@ -93,7 +106,7 @@ def create_trace(run: Run) -> Trace:
     )
 
 
-def transition_run(run: Run, status: RunStatus, *, clock: FixedClock) -> Run:
+def transition_run(run: Run, status: RunStatus, *, clock: Clock) -> Run:
     status = RunStatus.parse(status.value if isinstance(status, RunStatus) else status)
     if status not in ALLOWED_TRANSITIONS[run.status]:
         raise ValueError(f"invalid run transition: {run.status.value} -> {status.value}")
@@ -108,7 +121,7 @@ def create_artifact(
     payload: JsonMutableObject,
     metadata: JsonMutableObject,
     artifact_ids: IdSequence,
-    clock: FixedClock,
+    clock: Clock,
     output: str | None = None,
     kind: str | None = None,
 ) -> Artifact:
@@ -160,7 +173,7 @@ def create_trace_event(
     run_id: str,
     event_type: TraceEventType,
     event_ids: IdSequence,
-    clock: FixedClock,
+    clock: Clock,
     step_id: str | None,
     payload: JsonMutableObject,
 ) -> TraceEvent:

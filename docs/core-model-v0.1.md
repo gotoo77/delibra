@@ -309,6 +309,7 @@ Protocol validation:
 - role ids are unique.
 - step ids are unique.
 - `produces.output` values are unique.
+- `produces.output` cannot be `user_input`; that id is reserved for the original run input.
 - every `kind` is one of `prompt`, `fanout`, `criticize`, `synthesize`.
 - every role reference exists.
 - every `inputs` entry is either `user_input` or a previous `produces.output`.
@@ -331,12 +332,14 @@ Primitive validation:
 - requires non-empty `roles`;
 - forbids `role`;
 - produces one artifact per role under the same output.
+- execution is sequential in v0.1 even though the step is semantically multi-role.
 
 `criticize`
 
 - requires non-empty `roles`;
 - forbids `role`;
 - produces one artifact per role under the same output.
+- execution is sequential in v0.1.
 
 `synthesize`
 
@@ -726,36 +729,18 @@ steps:
     },
     {
       "id": "evt_0002",
-      "type": "RunValidated",
-      "timestamp": "2026-07-07T10:00:00Z",
-      "run_id": "run_0001",
-      "step_id": null,
-      "payload": {
-        "protocol_id": "code_review",
-        "protocol_version": "0.1.0"
-      }
-    },
-    {
-      "id": "evt_0003",
-      "type": "RunStarted",
-      "timestamp": "2026-07-07T10:00:01Z",
-      "run_id": "run_0001",
-      "step_id": null,
-      "payload": {}
-    },
-    {
-      "id": "evt_0004",
       "type": "StepStarted",
       "timestamp": "2026-07-07T10:00:02Z",
       "run_id": "run_0001",
       "step_id": "frame",
       "payload": {
+        "step_id": "frame",
         "inputs": ["user_input"],
         "resolved_artifact_ids": []
       }
     },
     {
-      "id": "evt_0005",
+      "id": "evt_0003",
       "type": "MessageSent",
       "timestamp": "2026-07-07T10:00:02Z",
       "run_id": "run_0001",
@@ -765,7 +750,7 @@ steps:
       }
     },
     {
-      "id": "evt_0006",
+      "id": "evt_0004",
       "type": "MessageReceived",
       "timestamp": "2026-07-07T10:00:05Z",
       "run_id": "run_0001",
@@ -775,7 +760,7 @@ steps:
       }
     },
     {
-      "id": "evt_0007",
+      "id": "evt_0005",
       "type": "ArtifactCreated",
       "timestamp": "2026-07-07T10:00:05Z",
       "run_id": "run_0001",
@@ -788,7 +773,7 @@ steps:
       }
     },
     {
-      "id": "evt_0008",
+      "id": "evt_0006",
       "type": "StepCompleted",
       "timestamp": "2026-07-07T10:00:05Z",
       "run_id": "run_0001",
@@ -798,18 +783,19 @@ steps:
       }
     },
     {
-      "id": "evt_0009",
+      "id": "evt_0007",
       "type": "StepStarted",
       "timestamp": "2026-07-07T10:00:06Z",
       "run_id": "run_0001",
       "step_id": "role_reviews",
       "payload": {
+        "step_id": "role_reviews",
         "inputs": ["framing"],
         "resolved_artifact_ids": ["artifact_0001"]
       }
     },
     {
-      "id": "evt_0010",
+      "id": "evt_0008",
       "type": "StepCompleted",
       "timestamp": "2026-07-07T10:00:12Z",
       "run_id": "run_0001",
@@ -819,18 +805,19 @@ steps:
       }
     },
     {
-      "id": "evt_0011",
+      "id": "evt_0009",
       "type": "StepStarted",
       "timestamp": "2026-07-07T10:00:13Z",
       "run_id": "run_0001",
       "step_id": "cross_critique",
       "payload": {
+        "step_id": "cross_critique",
         "inputs": ["reviews"],
         "resolved_artifact_ids": ["artifact_0002", "artifact_0003", "artifact_0004"]
       }
     },
     {
-      "id": "evt_0012",
+      "id": "evt_0010",
       "type": "StepCompleted",
       "timestamp": "2026-07-07T10:00:17Z",
       "run_id": "run_0001",
@@ -840,12 +827,13 @@ steps:
       }
     },
     {
-      "id": "evt_0013",
+      "id": "evt_0011",
       "type": "StepStarted",
       "timestamp": "2026-07-07T10:00:18Z",
       "run_id": "run_0001",
       "step_id": "final",
       "payload": {
+        "step_id": "final",
         "inputs": ["framing", "reviews", "critiques"],
         "resolved_artifact_ids": [
           "artifact_0001",
@@ -859,7 +847,7 @@ steps:
       }
     },
     {
-      "id": "evt_0014",
+      "id": "evt_0012",
       "type": "ArtifactCreated",
       "timestamp": "2026-07-07T10:00:20Z",
       "run_id": "run_0001",
@@ -872,7 +860,7 @@ steps:
       }
     },
     {
-      "id": "evt_0015",
+      "id": "evt_0013",
       "type": "StepCompleted",
       "timestamp": "2026-07-07T10:00:20Z",
       "run_id": "run_0001",
@@ -882,7 +870,7 @@ steps:
       }
     },
     {
-      "id": "evt_0016",
+      "id": "evt_0014",
       "type": "RunCompleted",
       "timestamp": "2026-07-07T10:00:21Z",
       "run_id": "run_0001",

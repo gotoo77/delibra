@@ -125,6 +125,13 @@ class ArchitectureInvariantTests(unittest.TestCase):
                         imports,
                     )
 
+    def test_cli_uses_runtime_clock_not_deterministic_test_clock(self) -> None:
+        cli_source = (ROOT / "src" / "delibra" / "cli.py").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertNotIn("deterministic_clock", cli_source)
+
     def test_durable_models_reject_unknown_fields(self) -> None:
         artifact_json = {
             "id": "artifact_0001",

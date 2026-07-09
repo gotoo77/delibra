@@ -1,8 +1,10 @@
 """Runtime helpers for deterministic artifact orchestration."""
 
 from delibra.runtime.builders import (
+    Clock,
     FixedClock,
     IdSequence,
+    SystemClock,
     append_artifact,
     append_trace_event,
     create_artifact,
@@ -27,7 +29,6 @@ from delibra.runtime.engine import (
     default_engine_ids,
     deterministic_clock,
     execute_protocol,
-    execute_prompt_synthesize_protocol,
 )
 from delibra.runtime.llm import (
     LLMClient,
@@ -69,8 +70,10 @@ __all__ = [
     "ExecutionContext",
     "Budget",
     "BudgetExceededAction",
+    "Clock",
     "FixedClock",
     "IdSequence",
+    "SystemClock",
     "InvalidRunStateError",
     "EngineIds",
     "EngineExecutionError",
@@ -114,6 +117,5 @@ __all__ = [
     "deterministic_clock",
     "estimate_approx_units",
     "execute_protocol",
-    "execute_prompt_synthesize_protocol",
     "transition_run",
 ]

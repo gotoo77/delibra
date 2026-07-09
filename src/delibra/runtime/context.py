@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from types import MappingProxyType
 
-from delibra.core import Artifact, Run, RunStatus, StepDefinition
+from delibra.core import Artifact, Run, RunStatus, StepDefinition, USER_INPUT_RESERVED_ID
 from delibra.core.json import JsonFrozenObject
 
 
@@ -54,7 +54,7 @@ class ExecutionContext:
         )
 
     def resolve_input(self, input_id: str) -> JsonFrozenObject | tuple[str, ...]:
-        if input_id == "user_input":
+        if input_id == USER_INPUT_RESERVED_ID:
             return self.input_ref
         try:
             return self.output_index[input_id]
@@ -66,7 +66,7 @@ class ExecutionContext:
         artifact_ids: list[str] = []
         for input_id in step.inputs:
             resolved = self.resolve_input(input_id)
-            if input_id == "user_input":
+            if input_id == USER_INPUT_RESERVED_ID:
                 user_input = resolved
             else:
                 artifact_ids.extend(resolved)

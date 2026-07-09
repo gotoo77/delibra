@@ -9,6 +9,9 @@ from typing import Any
 from delibra.core.json import JsonMutableObject
 
 
+USER_INPUT_RESERVED_ID = "user_input"
+
+
 class StepKind(str, Enum):
     PROMPT = "prompt"
     FANOUT = "fanout"

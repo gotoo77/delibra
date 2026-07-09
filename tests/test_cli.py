@@ -44,6 +44,18 @@ def _nested_keys(value) -> set[str]:
     return keys
 
 
+def _without_timestamps(value):
+    if isinstance(value, dict):
+        return {
+            key: _without_timestamps(item)
+            for key, item in value.items()
+            if key not in {"started_at", "completed_at", "created_at", "timestamp"}
+        }
+    if isinstance(value, list):
+        return [_without_timestamps(item) for item in value]
+    return value
+
+
 class CliSmokeTests(unittest.TestCase):
     def test_help_runs_successfully(self) -> None:
         result = run_cli("--help")
@@ -173,13 +185,18 @@ class CliSmokeTests(unittest.TestCase):
             self.assertEqual(explicit_result.returncode, 0)
             self.assertEqual(default_result.stderr, "")
             self.assertEqual(explicit_result.stderr, "")
+            default_run = json.loads(default_run_output.read_text(encoding="utf-8"))
+            explicit_run = json.loads(explicit_run_output.read_text(encoding="utf-8"))
+            default_trace = json.loads(default_trace_output.read_text(encoding="utf-8"))
+            explicit_trace = json.loads(explicit_trace_output.read_text(encoding="utf-8"))
+
             self.assertEqual(
-                json.loads(default_run_output.read_text(encoding="utf-8")),
-                json.loads(explicit_run_output.read_text(encoding="utf-8")),
+                _without_timestamps(default_run),
+                _without_timestamps(explicit_run),
             )
             self.assertEqual(
-                json.loads(default_trace_output.read_text(encoding="utf-8")),
-                json.loads(explicit_trace_output.read_text(encoding="utf-8")),
+                _without_timestamps(default_trace),
+                _without_timestamps(explicit_trace),
             )
 
     def test_run_accepts_valid_policy_file(self) -> None:
@@ -226,7 +243,9 @@ class CliSmokeTests(unittest.TestCase):
             run_json = json.loads(run_output.read_text(encoding="utf-8"))
             trace_json = json.loads(trace_output.read_text(encoding="utf-8"))
             self.assertEqual(run_json["status"], "completed")
-            policy_applied = trace_json["events"][0]
+            policy_applied = next(
+                event for event in trace_json["events"] if event["type"] == "PolicyApplied"
+            )
             self.assertEqual(policy_applied["type"], "PolicyApplied")
             self.assertEqual(
                 policy_applied["payload"],

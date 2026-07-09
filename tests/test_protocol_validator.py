@@ -164,6 +164,20 @@ class ProtocolValidatorTests(unittest.TestCase):
         with self.assertRaisesRegex(ProtocolValidationError, "duplicate produces.output"):
             validate_protocol(make_protocol(first, duplicate, final))
 
+    def test_user_input_reserved_output_fails_validation(self) -> None:
+        step = StepDefinition(
+            id="frame",
+            kind=StepKind.PROMPT,
+            role="framer",
+            roles=None,
+            instruction="Frame.",
+            inputs=("user_input",),
+            produces=Produces(output="user_input", kind="framing"),
+        )
+
+        with self.assertRaisesRegex(ProtocolValidationError, "reserved input id"):
+            validate_protocol(make_protocol(step))
+
     def test_unknown_input_output_fails(self) -> None:
         step = StepDefinition(
             id="reviews",

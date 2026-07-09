@@ -14,6 +14,7 @@ from delibra.core.protocol import (
     Role,
     StepDefinition,
     StepKind,
+    USER_INPUT_RESERVED_ID,
 )
 
 __all__ = [
@@ -28,4 +29,5 @@ __all__ = [
     "Trace",
     "TraceEvent",
     "TraceEventType",
+    "USER_INPUT_RESERVED_ID",
 ]

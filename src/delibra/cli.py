@@ -25,9 +25,9 @@ from delibra.runtime import (
     OllamaProviderError,
     OpenAIConfigError,
     OpenAIProviderError,
+    SystemClock,
     UnsupportedStepKindError,
     default_engine_ids,
-    deterministic_clock,
     execute_protocol,
 )
 
@@ -59,7 +59,10 @@ def build_parser() -> argparse.ArgumentParser:
     run = subparsers.add_parser(
         "run",
         help="run a protocol with the selected provider",
-        description="Run a protocol with the selected provider.",
+        description=(
+            "Run a protocol with the selected provider. In v0.1, multi-role "
+            "fanout and criticize steps execute sequentially."
+        ),
     )
     run.add_argument("--protocol", required=True, help="path to a protocol YAML file")
     run.add_argument(
@@ -163,7 +166,7 @@ def _run(args: argparse.Namespace) -> int:
             {"kind": "text", "content": args.input_text},
             llm=build_llm_client(args.provider),
             ids=ids,
-            clock=deterministic_clock(),
+            clock=SystemClock(),
             policy=policy,
             progress=_build_progress_printer(args.provider) if args.progress else None,
         )

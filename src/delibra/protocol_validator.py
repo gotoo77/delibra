@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from delibra.core import Protocol, StepDefinition, StepKind
+from delibra.core import Protocol, StepDefinition, StepKind, USER_INPUT_RESERVED_ID
 
 
 @dataclass(frozen=True)
@@ -42,7 +42,7 @@ def _validate_steps(protocol: Protocol) -> None:
     role_ids = set(protocol.roles)
     step_ids: set[str] = set()
     output_ids: set[str] = set()
-    available_inputs = {"user_input"}
+    available_inputs = {USER_INPUT_RESERVED_ID}
 
     for index, step in enumerate(protocol.steps):
         if step.id in step_ids:
@@ -68,6 +68,11 @@ def _validate_step_shape(
         raise ProtocolValidationError(f"step {step.id} instruction is required")
     if step.produces.output == "":
         raise ProtocolValidationError(f"step {step.id} produces.output is required")
+    if step.produces.output == USER_INPUT_RESERVED_ID:
+        raise ProtocolValidationError(
+            f"step {step.id} produces.output uses reserved input id: "
+            f"{USER_INPUT_RESERVED_ID}"
+        )
     if step.produces.kind == "":
         raise ProtocolValidationError(f"step {step.id} produces.kind is required")
 
@@ -114,4 +119,3 @@ def _validate_step_inputs(step: StepDefinition, available_inputs: set[str]) -> N
             raise ProtocolValidationError(
                 f"step {step.id} input references unavailable output: {input_id}"
             )
-

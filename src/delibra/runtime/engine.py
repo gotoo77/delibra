@@ -4,10 +4,20 @@ import json
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from delibra.core import Protocol, Run, RunStatus, StepDefinition, StepKind, Trace, TraceEventType
+from delibra.core import (
+    Protocol,
+    Run,
+    RunStatus,
+    StepDefinition,
+    StepKind,
+    Trace,
+    TraceEventType,
+    USER_INPUT_RESERVED_ID,
+)
 from delibra.core.json import JsonMutableObject
 from delibra.protocol_validator import validate_protocol
 from delibra.runtime.builders import (
+    Clock,
     FixedClock,
     IdSequence,
     append_artifact,
@@ -93,32 +103,13 @@ class _PolicyCancelled(Exception):
     trace: Trace
 
 
-def execute_prompt_synthesize_protocol(
-    protocol: Protocol,
-    input_ref: JsonMutableObject,
-    *,
-    llm: LLMClient,
-    ids: EngineIds,
-    clock: FixedClock,
-    progress: ProgressCallback | None = None,
-) -> EngineResult:
-    return execute_protocol(
-        protocol,
-        input_ref,
-        llm=llm,
-        ids=ids,
-        clock=clock,
-        progress=progress,
-    )
-
-
 def execute_protocol(
     protocol: Protocol,
     input_ref: JsonMutableObject,
     *,
     llm: LLMClient,
     ids: EngineIds,
-    clock: FixedClock,
+    clock: Clock,
     policy: ExecutionPolicy | None = None,
     progress: ProgressCallback | None = None,
 ) -> EngineResult:
@@ -133,6 +124,7 @@ def execute_protocol(
         clock=clock,
     )
     trace = create_trace(run)
+    trace = _append_run_created_event(trace, run, ids=ids, clock=clock)
 
     run = transition_run(run, RunStatus.VALIDATED, clock=clock)
     run = transition_run(run, RunStatus.RUNNING, clock=clock)
@@ -174,13 +166,33 @@ def execute_protocol(
     return EngineResult(run=run, trace=trace)
 
 
+def _append_run_created_event(
+    trace: Trace,
+    run: Run,
+    *,
+    ids: EngineIds,
+    clock: Clock,
+) -> Trace:
+    return append_trace_event(
+        trace,
+        create_trace_event(
+            run_id=run.id,
+            event_type=TraceEventType.RUN_CREATED,
+            event_ids=ids.event_ids,
+            clock=clock,
+            step_id=None,
+            payload={},
+        ),
+    )
+
+
 def _append_policy_applied_event(
     trace: Trace,
     run: Run,
     policy: ExecutionPolicy,
     *,
     ids: EngineIds,
-    clock: FixedClock,
+    clock: Clock,
 ) -> Trace:
     return append_trace_event(
         trace,
@@ -210,7 +222,7 @@ def _execute_step(
     *,
     llm: LLMClient,
     ids: EngineIds,
-    clock: FixedClock,
+    clock: Clock,
     progress: ProgressCallback | None,
 ) -> tuple[Run, Trace, ExecutionContext, PolicyState]:
     _emit_progress(
@@ -221,6 +233,7 @@ def _execute_step(
         step_kind=step.kind.value,
         artifact_count=len(run.artifacts),
     )
+    resolved_inputs = context.resolve_step_inputs(step)
     trace = append_trace_event(
         trace,
         create_trace_event(
@@ -229,7 +242,11 @@ def _execute_step(
             event_ids=ids.event_ids,
             clock=clock,
             step_id=step.id,
-            payload={"step_id": step.id},
+            payload={
+                "step_id": step.id,
+                "inputs": list(step.inputs),
+                "resolved_artifact_ids": list(resolved_inputs.artifact_ids),
+            },
         ),
     )
 
@@ -370,7 +387,7 @@ def _execute_step_for_role(
     *,
     llm: LLMClient,
     ids: EngineIds,
-    clock: FixedClock,
+    clock: Clock,
     progress: ProgressCallback | None,
 ) -> tuple[Run, Trace, ExecutionContext, PolicyState, str]:
     try:
@@ -390,7 +407,7 @@ def _execute_step_for_role(
             role,
             message_ids=ids.request_message_ids,
             inputs={
-                "user_input": None
+                USER_INPUT_RESERVED_ID: None
                 if resolved_inputs.user_input is None
                 else dict(resolved_inputs.user_input),
                 "artifact_ids": list(resolved_inputs.artifact_ids),

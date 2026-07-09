@@ -29,7 +29,6 @@ from delibra.runtime import (
     default_engine_ids,
     deterministic_clock,
     execute_protocol,
-    execute_prompt_synthesize_protocol,
 )
 
 
@@ -53,7 +52,7 @@ def run_cli(*args: str) -> subprocess.CompletedProcess[str]:
 
 def execute_fixture():
     protocol = load_protocol_yaml(FIXTURE)
-    return execute_prompt_synthesize_protocol(
+    return execute_protocol(
         protocol,
         {"kind": "text", "content": "Why protect oceans?"},
         llm=MockLLMClient(IdSequence("msg_response")),
@@ -156,6 +155,7 @@ class RuntimeEngineTests(unittest.TestCase):
         self.assertEqual(
             [(event.step_id, event.type.value) for event in result.trace.events],
             [
+                (None, "RunCreated"),
                 (None, "PolicyApplied"),
                 ("frame", "StepStarted"),
                 ("frame", "PolicyDecision"),
@@ -169,6 +169,39 @@ class RuntimeEngineTests(unittest.TestCase):
                 ("final", "MessageReceived"),
                 ("final", "ArtifactCreated"),
                 ("final", "StepCompleted"),
+            ],
+        )
+
+    def test_run_created_is_first_trace_event(self) -> None:
+        result = execute_fixture()
+
+        first = result.trace.events[0]
+
+        self.assertEqual(first.type, TraceEventType.RUN_CREATED)
+        self.assertIsNone(first.step_id)
+        self.assertEqual(first.payload, {})
+
+    def test_step_started_records_declared_and_resolved_inputs(self) -> None:
+        result = execute_fixture()
+        started = [
+            event
+            for event in result.trace.events
+            if event.type is TraceEventType.STEP_STARTED
+        ]
+
+        self.assertEqual(
+            [event.payload for event in started],
+            [
+                {
+                    "step_id": "frame",
+                    "inputs": ("user_input",),
+                    "resolved_artifact_ids": (),
+                },
+                {
+                    "step_id": "final",
+                    "inputs": ("framing",),
+                    "resolved_artifact_ids": ("artifact_0001",),
+                },
             ],
         )
 
@@ -560,7 +593,7 @@ class RuntimeEngineTests(unittest.TestCase):
         protocol = load_protocol_yaml(FIXTURE)
 
         with self.assertRaises(EngineExecutionError) as raised:
-            execute_prompt_synthesize_protocol(
+            execute_protocol(
                 protocol,
                 {"kind": "text", "content": "input"},
                 llm=MockLLMClient(
@@ -640,16 +673,16 @@ class RuntimeEngineTests(unittest.TestCase):
             trace_json = json.loads(trace_output.read_text(encoding="utf-8"))
             self.assertEqual(run_json["status"], "completed")
             self.assertEqual(len(run_json["artifacts"]), 2)
-            self.assertEqual(trace_json["events"][0]["type"], "PolicyApplied")
+            self.assertEqual(trace_json["events"][0]["type"], "RunCreated")
             self.assertEqual(
-                trace_json["events"][0]["payload"],
+                trace_json["events"][1]["payload"],
                 {
                     "policy_id": "default",
                     "mode": "standard",
                     "unit": "approx_token",
                 },
             )
-            self.assertEqual(trace_json["events"][1]["type"], "StepStarted")
+            self.assertEqual(trace_json["events"][2]["type"], "StepStarted")
 
 
 if __name__ == "__main__":
