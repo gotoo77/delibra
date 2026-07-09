@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 
 from delibra import __version__
 from delibra.core import Run, Trace
+from delibra.policy_loader import PolicyLoadError, load_policy_yaml
 from delibra.protocol_loader import ProtocolLoadError, load_protocol_yaml
 from delibra.protocol_validator import ProtocolValidationError, validate_protocol
 from delibra.runtime import (
@@ -68,6 +69,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="provider: mock, openai, ollama; default mock",
     )
     run.add_argument("--input-text", required=True, help="text input for the run")
+    run.add_argument(
+        "--policy",
+        help="path to an execution policy YAML file",
+    )
     run.add_argument("--run-output", required=True, help="path to write run JSON")
     run.add_argument("--trace-output", required=True, help="path to write trace JSON")
     run.add_argument(
@@ -132,6 +137,11 @@ def _run(args: argparse.Namespace) -> int:
     except ProtocolLoadError as exc:
         print(f"delibra run: {exc}", file=sys.stderr)
         return 1
+    try:
+        policy = None if args.policy is None else load_policy_yaml(args.policy)
+    except PolicyLoadError as exc:
+        print(f"delibra run: {exc}", file=sys.stderr)
+        return 1
 
     try:
         ids = default_engine_ids()
@@ -141,6 +151,7 @@ def _run(args: argparse.Namespace) -> int:
             llm=_build_llm_client(args.provider),
             ids=ids,
             clock=deterministic_clock(),
+            policy=policy,
             progress=_build_progress_printer(args.provider) if args.progress else None,
         )
     except EngineExecutionError as exc:

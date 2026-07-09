@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -29,6 +30,18 @@ def run_cli(*args: str, env_overrides: dict[str, str | None] | None = None) -> s
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
+
+
+def _nested_keys(value) -> set[str]:
+    keys: set[str] = set()
+    if isinstance(value, dict):
+        for key, item in value.items():
+            keys.add(key)
+            keys.update(_nested_keys(item))
+    elif isinstance(value, list):
+        for item in value:
+            keys.update(_nested_keys(item))
+    return keys
 
 
 class CliSmokeTests(unittest.TestCase):
@@ -65,6 +78,8 @@ class CliSmokeTests(unittest.TestCase):
         self.assertIn("{mock,openai,ollama}", result.stdout)
         self.assertIn("provider: mock, openai, ollama; default mock", result.stdout)
         self.assertIn("--progress", result.stdout)
+        self.assertIn("--policy", result.stdout)
+        self.assertIn("path to an execution policy YAML file", result.stdout)
         self.assertNotIn("mock LLM", result.stdout)
         self.assertIn("--run-output", result.stdout)
         self.assertIn("--trace-output", result.stdout)
@@ -120,6 +135,159 @@ class CliSmokeTests(unittest.TestCase):
             self.assertEqual(result.stderr, "")
             self.assertTrue(run_output.exists())
             self.assertTrue(trace_output.exists())
+
+    def test_run_accepts_valid_policy_file(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            run_output = tmp_path / "run.json"
+            trace_output = tmp_path / "trace.json"
+            policy_path = tmp_path / "policy.yaml"
+            policy_path.write_text(
+                "id: cheap-review\n"
+                "mode: cheap\n"
+                "budget:\n"
+                "  max_estimated_units: 10000\n"
+                "default_step_budget:\n"
+                "  max_output_units: 300\n"
+                "routes:\n"
+                "  cheap-default:\n"
+                "    provider: openai\n"
+                "    model: gpt-5-mini\n"
+                "steps:\n"
+                "  frame:\n"
+                "    route_id: cheap-default\n",
+                encoding="utf-8",
+            )
+
+            result = run_cli(
+                "run",
+                "--protocol",
+                str(ROOT / "tests" / "fixtures" / "prompt_synthesize_protocol.yaml"),
+                "--provider",
+                "mock",
+                "--policy",
+                str(policy_path),
+                "--input-text",
+                "Review this change.",
+                "--run-output",
+                str(run_output),
+                "--trace-output",
+                str(trace_output),
+            )
+
+            self.assertEqual(result.returncode, 0)
+            self.assertEqual(result.stderr, "")
+            run_json = json.loads(run_output.read_text(encoding="utf-8"))
+            trace_json = json.loads(trace_output.read_text(encoding="utf-8"))
+            self.assertEqual(run_json["status"], "completed")
+            policy_applied = trace_json["events"][0]
+            self.assertEqual(policy_applied["type"], "PolicyApplied")
+            self.assertEqual(
+                policy_applied["payload"],
+                {
+                    "policy_id": "cheap-review",
+                    "mode": "cheap",
+                    "unit": "approx_token",
+                },
+            )
+            decision_events = [
+                event
+                for event in trace_json["events"]
+                if event["type"] == "PolicyDecision"
+            ]
+            self.assertGreater(len(decision_events), 0)
+            self.assertEqual(decision_events[0]["payload"]["route_id"], "cheap-default")
+            self.assertTrue(
+                {"provider", "model", "tokens", "cost"}.isdisjoint(
+                    _nested_keys(trace_json)
+                )
+            )
+
+    def test_run_policy_budget_can_cancel_run(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            run_output = tmp_path / "run.json"
+            trace_output = tmp_path / "trace.json"
+            policy_path = tmp_path / "policy.yaml"
+            policy_path.write_text(
+                "id: too-cheap\n"
+                "mode: standard\n"
+                "budget:\n"
+                "  max_estimated_units: 1\n",
+                encoding="utf-8",
+            )
+
+            result = run_cli(
+                "run",
+                "--protocol",
+                str(ROOT / "tests" / "fixtures" / "prompt_synthesize_protocol.yaml"),
+                "--provider",
+                "mock",
+                "--policy",
+                str(policy_path),
+                "--input-text",
+                "Review this change.",
+                "--run-output",
+                str(run_output),
+                "--trace-output",
+                str(trace_output),
+            )
+
+            self.assertEqual(result.returncode, 0)
+            self.assertEqual(result.stderr, "")
+            run_json = json.loads(run_output.read_text(encoding="utf-8"))
+            trace_json = json.loads(trace_output.read_text(encoding="utf-8"))
+            self.assertEqual(run_json["status"], "cancelled")
+            self.assertEqual(run_json["artifacts"], [])
+            self.assertIn(
+                "PolicyDecision",
+                [event["type"] for event in trace_json["events"]],
+            )
+            self.assertIn(
+                "BudgetExceeded",
+                [event["type"] for event in trace_json["events"]],
+            )
+            self.assertTrue(
+                {"provider", "model", "tokens", "cost"}.isdisjoint(
+                    _nested_keys(trace_json)
+                )
+            )
+
+    def test_run_invalid_policy_fails_before_writing_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            run_output = tmp_path / "run.json"
+            trace_output = tmp_path / "trace.json"
+            policy_path = tmp_path / "policy.yaml"
+            policy_path.write_text(
+                "id: invalid\n"
+                "mode: standard\n"
+                "unit: tokens\n",
+                encoding="utf-8",
+            )
+
+            result = run_cli(
+                "run",
+                "--protocol",
+                str(ROOT / "tests" / "fixtures" / "prompt_synthesize_protocol.yaml"),
+                "--provider",
+                "mock",
+                "--policy",
+                str(policy_path),
+                "--input-text",
+                "Review this change.",
+                "--run-output",
+                str(run_output),
+                "--trace-output",
+                str(trace_output),
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("invalid policy YAML shape", result.stderr)
+            self.assertIn("approx_token", result.stderr)
+            self.assertFalse(run_output.exists())
+            self.assertFalse(trace_output.exists())
+            self.assertNotIn("Traceback", result.stderr)
 
     def test_run_accepts_explicit_mock_provider(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

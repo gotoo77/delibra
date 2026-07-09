@@ -19,9 +19,13 @@ from delibra.core import (
 )
 from delibra.protocol_loader import load_protocol_yaml
 from delibra.runtime import (
+    Budget,
     EngineExecutionError,
+    ExecutionMode,
+    ExecutionPolicy,
     IdSequence,
     MockLLMClient,
+    StepPolicy,
     default_engine_ids,
     deterministic_clock,
     execute_protocol,
@@ -152,18 +156,277 @@ class RuntimeEngineTests(unittest.TestCase):
         self.assertEqual(
             [(event.step_id, event.type.value) for event in result.trace.events],
             [
+                (None, "PolicyApplied"),
                 ("frame", "StepStarted"),
+                ("frame", "PolicyDecision"),
                 ("frame", "MessageSent"),
                 ("frame", "MessageReceived"),
                 ("frame", "ArtifactCreated"),
                 ("frame", "StepCompleted"),
                 ("final", "StepStarted"),
+                ("final", "PolicyDecision"),
                 ("final", "MessageSent"),
                 ("final", "MessageReceived"),
                 ("final", "ArtifactCreated"),
                 ("final", "StepCompleted"),
             ],
         )
+
+    def test_execute_protocol_accepts_policy_none_and_records_default_policy(self) -> None:
+        protocol = load_protocol_yaml(FIXTURE)
+
+        result = execute_protocol(
+            protocol,
+            {"kind": "text", "content": "Why protect oceans?"},
+            llm=MockLLMClient(IdSequence("msg_response")),
+            ids=default_engine_ids(),
+            clock=deterministic_clock(),
+            policy=None,
+        )
+
+        policy_events = [
+            event
+            for event in result.trace.events
+            if event.type is TraceEventType.POLICY_APPLIED
+        ]
+        self.assertEqual(len(policy_events), 1)
+        self.assertEqual(
+            policy_events[0].payload,
+            {
+                "policy_id": "default",
+                "mode": "standard",
+                "unit": "approx_token",
+            },
+        )
+
+    def test_execute_protocol_accepts_explicit_policy_and_records_neutral_payload(self) -> None:
+        protocol = load_protocol_yaml(FIXTURE)
+        policy = ExecutionPolicy(
+            id="cheap-review",
+            mode=ExecutionMode.CHEAP,
+            run_budget=Budget(max_estimated_units=3000),
+            routes={"cheap-default": {"provider": "openai", "model": "gpt-5-mini"}},
+            steps={"frame": StepPolicy(route_id="cheap-default")},
+        )
+
+        result = execute_protocol(
+            protocol,
+            {"kind": "text", "content": "Why protect oceans?"},
+            llm=MockLLMClient(IdSequence("msg_response")),
+            ids=default_engine_ids(),
+            clock=deterministic_clock(),
+            policy=policy,
+        )
+
+        policy_events = [
+            event
+            for event in result.trace.events
+            if event.type is TraceEventType.POLICY_APPLIED
+        ]
+        self.assertEqual(len(policy_events), 1)
+        self.assertEqual(
+            policy_events[0].payload,
+            {
+                "policy_id": "cheap-review",
+                "mode": "cheap",
+                "unit": "approx_token",
+            },
+        )
+        self.assertTrue(
+            {"provider", "model", "tokens", "cost"}.isdisjoint(
+                set(policy_events[0].payload)
+            )
+        )
+
+    def test_policy_decision_event_is_emitted_before_each_llm_call(self) -> None:
+        result = execute_full_fixture()
+        decision_events = [
+            event
+            for event in result.trace.events
+            if event.type is TraceEventType.POLICY_DECISION
+        ]
+        message_sent_events = [
+            event
+            for event in result.trace.events
+            if event.type is TraceEventType.MESSAGE_SENT
+        ]
+
+        self.assertEqual(len(decision_events), len(message_sent_events))
+        self.assertEqual(len(decision_events), 5)
+        for decision_event, message_event in zip(decision_events, message_sent_events):
+            self.assertEqual(decision_event.step_id, message_event.step_id)
+            self.assertLess(
+                result.trace.events.index(decision_event),
+                result.trace.events.index(message_event),
+            )
+
+    def test_policy_decision_payload_is_neutral(self) -> None:
+        protocol = load_protocol_yaml(FIXTURE)
+        policy = ExecutionPolicy(
+            id="cheap-review",
+            mode=ExecutionMode.CHEAP,
+            default_step_budget=Budget(max_output_units=300),
+            routes={"cheap-default": {"provider": "openai", "model": "gpt-5-mini"}},
+            steps={"frame": StepPolicy(route_id="cheap-default")},
+        )
+
+        result = execute_protocol(
+            protocol,
+            {"kind": "text", "content": "Why protect oceans?"},
+            llm=MockLLMClient(IdSequence("msg_response")),
+            ids=default_engine_ids(),
+            clock=deterministic_clock(),
+            policy=policy,
+        )
+
+        decision = next(
+            event
+            for event in result.trace.events
+            if event.type is TraceEventType.POLICY_DECISION
+            and event.step_id == "frame"
+        )
+        self.assertEqual(
+            set(decision.payload),
+            {
+                "step_id",
+                "role_id",
+                "action",
+                "reason",
+                "estimated_input_units",
+                "reserved_output_units",
+                "estimated_total_units",
+                "run_budget_remaining",
+                "step_budget_remaining",
+                "route_id",
+                "unit",
+            },
+        )
+        self.assertEqual(decision.payload["action"], "allow_call")
+        self.assertEqual(decision.payload["route_id"], "cheap-default")
+        self.assertEqual(decision.payload["unit"], "approx_token")
+        self.assertTrue(
+            {"provider", "model", "tokens", "cost"}.isdisjoint(set(decision.payload))
+        )
+
+    def test_sufficient_budget_preserves_runtime_behavior(self) -> None:
+        protocol = load_protocol_yaml(FIXTURE)
+        llm = RecordingLLMClient()
+        policy = ExecutionPolicy(
+            id="budgeted",
+            run_budget=Budget(max_estimated_units=10_000),
+            default_step_budget=Budget(max_estimated_units=5_000),
+        )
+
+        result = execute_protocol(
+            protocol,
+            {"kind": "text", "content": "Why protect oceans?"},
+            llm=llm,
+            ids=default_engine_ids(),
+            clock=deterministic_clock(),
+            policy=policy,
+        )
+
+        self.assertEqual(result.run.status, RunStatus.COMPLETED)
+        self.assertEqual(len(result.run.artifacts), 2)
+        self.assertEqual(len(llm.requests), 2)
+        self.assertFalse(
+            any(event.type is TraceEventType.BUDGET_EXCEEDED for event in result.trace.events)
+        )
+
+    def test_run_budget_exceeded_cancels_before_llm_call(self) -> None:
+        protocol = load_protocol_yaml(FIXTURE)
+        llm = RecordingLLMClient()
+        policy = ExecutionPolicy(
+            id="too-cheap",
+            run_budget=Budget(max_estimated_units=1),
+        )
+
+        result = execute_protocol(
+            protocol,
+            {"kind": "text", "content": "Why protect oceans?"},
+            llm=llm,
+            ids=default_engine_ids(),
+            clock=deterministic_clock(),
+            policy=policy,
+        )
+
+        self.assertEqual(result.run.status, RunStatus.CANCELLED)
+        self.assertEqual(len(llm.requests), 0)
+        self.assertEqual(len(result.run.artifacts), 0)
+        decision_events = [
+            event
+            for event in result.trace.events
+            if event.type is TraceEventType.POLICY_DECISION
+        ]
+        budget_events = [
+            event
+            for event in result.trace.events
+            if event.type is TraceEventType.BUDGET_EXCEEDED
+        ]
+        self.assertEqual(len(decision_events), 1)
+        self.assertEqual(len(budget_events), 1)
+        self.assertEqual(decision_events[0].payload["action"], "cancel_run")
+        self.assertEqual(decision_events[0].payload["reason"], "run budget exceeded")
+        self.assertLess(
+            result.trace.events.index(decision_events[0]),
+            result.trace.events.index(budget_events[0]),
+        )
+        self.assertEqual(
+            budget_events[0].payload,
+            {
+                "step_id": "frame",
+                "role_id": "framer",
+                "reason": "run budget exceeded",
+                "estimated_total_units": decision_events[0].payload[
+                    "estimated_total_units"
+                ],
+                "run_budget_remaining": 0,
+                "step_budget_remaining": 0,
+                "unit": "approx_token",
+            },
+        )
+        self.assertTrue(
+            {"provider", "model", "tokens", "cost"}.isdisjoint(
+                set(budget_events[0].payload)
+            )
+        )
+
+    def test_step_budget_exceeded_cancels_before_step_llm_call(self) -> None:
+        protocol = load_protocol_yaml(FIXTURE)
+        llm = RecordingLLMClient()
+        policy = ExecutionPolicy(
+            id="final-too-cheap",
+            steps={
+                "final": StepPolicy(
+                    budget=Budget(max_estimated_units=1),
+                ),
+            },
+        )
+
+        result = execute_protocol(
+            protocol,
+            {"kind": "text", "content": "Why protect oceans?"},
+            llm=llm,
+            ids=default_engine_ids(),
+            clock=deterministic_clock(),
+            policy=policy,
+        )
+
+        self.assertEqual(result.run.status, RunStatus.CANCELLED)
+        self.assertEqual(len(llm.requests), 1)
+        self.assertEqual([request.step_id for request in llm.requests], ["frame"])
+        self.assertEqual(len(result.run.artifacts), 1)
+        self.assertEqual(result.run.artifacts[0].producer_step_id, "frame")
+        budget_events = [
+            event
+            for event in result.trace.events
+            if event.type is TraceEventType.BUDGET_EXCEEDED
+        ]
+        self.assertEqual(len(budget_events), 1)
+        self.assertEqual(budget_events[0].payload["step_id"], "final")
+        self.assertEqual(budget_events[0].payload["role_id"], "synthesizer")
+        self.assertEqual(budget_events[0].payload["reason"], "step budget exceeded")
+        self.assertEqual(budget_events[0].payload["step_budget_remaining"], 0)
 
     def test_message_trace_events_reference_message_ids_only(self) -> None:
         result = execute_fixture()
@@ -377,7 +640,16 @@ class RuntimeEngineTests(unittest.TestCase):
             trace_json = json.loads(trace_output.read_text(encoding="utf-8"))
             self.assertEqual(run_json["status"], "completed")
             self.assertEqual(len(run_json["artifacts"]), 2)
-            self.assertEqual(trace_json["events"][0]["type"], "StepStarted")
+            self.assertEqual(trace_json["events"][0]["type"], "PolicyApplied")
+            self.assertEqual(
+                trace_json["events"][0]["payload"],
+                {
+                    "policy_id": "default",
+                    "mode": "standard",
+                    "unit": "approx_token",
+                },
+            )
+            self.assertEqual(trace_json["events"][1]["type"], "StepStarted")
 
 
 if __name__ == "__main__":

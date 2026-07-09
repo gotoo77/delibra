@@ -29,6 +29,32 @@ delibra run \
   --trace-output trace.json
 ```
 
+Run with an explicit execution policy:
+
+```bash
+cat > policy.yaml <<'YAML'
+id: cheap-review
+mode: cheap
+budget:
+  max_estimated_units: 3000
+default_step_budget:
+  max_output_units: 300
+YAML
+
+delibra run \
+  --protocol presets/code_review.yaml \
+  --provider mock \
+  --policy policy.yaml \
+  --input-text "Review this change." \
+  --run-output run.json \
+  --trace-output trace.json
+```
+
+Execution policies are runtime-only. They are traced through neutral
+`PolicyApplied`, `PolicyDecision`, and `BudgetExceeded` events without adding
+provider, model, token, or cost fields to durable protocol, run, trace, or
+artifact objects.
+
 Run with OpenAI:
 
 ```bash

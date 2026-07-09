@@ -61,3 +61,10 @@ not a feature roadmap. It is a guardrail for deciding where future ideas belong.
     Delibra may apply explicit optimization policies in the future, but raw
     intent must remain recoverable and transformations must never silently change
     the semantics of a run.
+
+11. Delibra should evolve from observed usage rather than anticipated needs.
+
+    New features should be connected to field evidence whenever possible. Ideas
+    may be explored, but implementation should be justified by observed
+    frictions, repeated use, or clear architectural pressure rather than
+    speculation alone.

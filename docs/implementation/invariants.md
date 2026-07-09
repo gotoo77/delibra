@@ -17,7 +17,14 @@ project-level guardrails behind this implementation checklist.
 - Trace is an event stream, not an ad hoc log.
 - Runtime behavior is deterministic given fixed protocol, input, model outputs, ids, and clock.
 - Non-determinism is isolated at provider/model boundaries.
-- When CLI behavior, providers, primitives, or commands change, update CLI help and documented examples in the same change.
+- When a CLI command or option is added, renamed, removed, or behaviorally
+  changed, the same patch must check and update:
+  - CLI help and usage text;
+  - associated CLI tests;
+  - `README.md` when the option is user-facing;
+  - `docs/README.md` or the relevant documentation when the option touches
+    runtime behavior;
+  - a minimal usage example when it helps prevent hidden or ambiguous behavior.
 
 Model outputs may vary.
 Runtime derivation must not.

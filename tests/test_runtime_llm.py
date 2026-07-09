@@ -420,7 +420,9 @@ class RuntimeLLMTests(unittest.TestCase):
         self.assertEqual(
             [event.type for event in result.trace.events],
             [
+                TraceEventType.POLICY_APPLIED,
                 TraceEventType.STEP_STARTED,
+                TraceEventType.POLICY_DECISION,
                 TraceEventType.MESSAGE_SENT,
                 TraceEventType.STEP_FAILED,
                 TraceEventType.RUN_FAILED,

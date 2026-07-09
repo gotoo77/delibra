@@ -2,6 +2,7 @@
 
 - [Delibra Core Model v0.1](core-model-v0.1.md)
 - [Architecture Principles](architecture-principles.md)
+- [Preset Repository](preset-repository.md)
 - [ADR-0001 - Delibra Core Identity](adr/0001-core-identity.md)
 - [ADR-0002 - Runtime Provider Boundary](adr/0002-runtime-provider-boundary.md)
 - [ADR-0003 - Efficient Execution](adr/0003-efficient-execution.md)
@@ -9,6 +10,10 @@
 - [AI Systems Engineering](implementation/ai-systems-engineering.md)
 
 ## Presets
+
+Presets are reusable Delibra recipes: versioned YAML protocols that encode
+structured deliberation patterns. See [Preset Repository](preset-repository.md)
+and [presets/README.md](../presets/README.md) for the current convention.
 
 - [Code Review](../presets/code_review.yaml)
 - [Design Review](../presets/design_review.yaml)
@@ -31,6 +36,27 @@ Example mock run:
 delibra run \
   --protocol presets/treasure_hunt_design.yaml \
   --provider mock \
+  --input-text "$(cat examples/treasure_hunt_design_input.md)" \
+  --run-output run.json \
+  --trace-output trace.json
+```
+
+Example run with an execution policy:
+
+```bash
+cat > policy.yaml <<'YAML'
+id: cheap-treasure-hunt
+mode: cheap
+budget:
+  max_estimated_units: 4000
+default_step_budget:
+  max_output_units: 300
+YAML
+
+delibra run \
+  --protocol presets/treasure_hunt_design.yaml \
+  --provider mock \
+  --policy policy.yaml \
   --input-text "$(cat examples/treasure_hunt_design_input.md)" \
   --run-output run.json \
   --trace-output trace.json
