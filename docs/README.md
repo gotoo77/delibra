@@ -8,6 +8,7 @@
 - [ADR-0003 - Efficient Execution](adr/0003-efficient-execution.md)
 - [Concept Notes](concepts/README.md)
 - [AI Systems Engineering](implementation/ai-systems-engineering.md)
+- [Measurement Notes](measurement-notes.md)
 
 ## Presets
 
@@ -19,6 +20,7 @@ and [presets/README.md](../presets/README.md) for the current convention.
 - [Design Review](../presets/design_review.yaml)
 - [Decision Review](../presets/decision_review.yaml)
 - [Treasure Hunt Design](../presets/treasure_hunt_design.yaml) (experimental)
+- [Treasure Hunt Design Selection](../presets/treasure_hunt_design_selection.yaml) (experimental)
 
 ### Treasure Hunt Design
 
@@ -26,6 +28,10 @@ and [presets/README.md](../presets/README.md) for the current convention.
 treasure hunt, or multi-domain puzzle sequence from structured constraints. It
 first derives a `game_dna`, then fans out design perspectives, critiques them
 through saboteur/playtester/coherence roles, and synthesizes a testable design.
+
+`treasure_hunt_design_selection` is a comparison variant. It keeps the same
+runtime primitives, adds one selection/compression step before final synthesis,
+and uses that compact artifact to reduce final-step context pressure.
 
 Minimal input example: [treasure_hunt_design_input.md](../examples/treasure_hunt_design_input.md).
 More ambitious comparison input: [treasure_hunt_design_input_gotoo.md](../examples/treasure_hunt_design_input_gotoo.md).

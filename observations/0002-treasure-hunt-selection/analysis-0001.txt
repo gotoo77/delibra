@@ -1,0 +1,54 @@
+Protocol metrics
+----------------
+run: run_0001
+status: completed
+protocol: treasure_hunt_design@0.1.0
+artifacts: 11
+trace_events: 54
+duration_seconds: 172.32
+
+Artifact sizes
+--------------
+total_payload_chars: 40272
+total_artifact_json_chars: 42686
+average_payload_chars: 3661
+largest_artifact: artifact_0010 output=design_critiques step=stress_test_design role=curator payload_chars=4322
+
+Step production
+---------------
+- derive_game_dna: artifacts=1 roles=1 kinds=game_dna role_ids=designer
+- design_candidates: artifacts=5 roles=5 kinds=design_view role_ids=curator,designer,emergent,logic_architect,narrator
+- stress_test_design: artifacts=4 roles=4 kinds=critique role_ids=curator,logic_architect,playtester,saboteur
+- final: artifacts=1 roles=1 kinds=synthesis role_ids=synthesizer
+
+Fanout-like steps
+-----------------
+- design_candidates: 5 roles
+- stress_test_design: 4 roles
+
+Critique-like steps
+-------------------
+- stress_test_design: 4 roles
+
+Context pressure estimates
+--------------------------
+input_chars: 323
+cumulative_artifact_context_chars_upper_bound: 204415
+largest_pre_call_context_upper_bound: before_artifact=artifact_0011 chars=39518
+estimated_tokens_upper_bound: 51104
+
+Repeated information signals
+----------------------------
+- output=design_critiques artifacts=4
+- output=design_views artifacts=5
+
+Potential bottlenecks
+---------------------
+- large accumulated context estimate before a later call: 39518 chars
+- multi-role step creates broad context fan-in pressure: design_candidates roles=5
+- multi-role step creates broad context fan-in pressure: stress_test_design roles=4
+
+Limitations
+-----------
+- Exact provider input sizes, token usage, latency, and cost are not persisted in run.json or trace.json.
+- Context metrics above are deterministic upper-bound estimates from persisted input and artifacts, not provider billing data.

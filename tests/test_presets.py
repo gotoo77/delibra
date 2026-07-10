@@ -21,6 +21,7 @@ PRESET_PATHS = (
     ROOT / "presets" / "design_review.yaml",
     ROOT / "presets" / "decision_review.yaml",
     ROOT / "presets" / "treasure_hunt_design.yaml",
+    ROOT / "presets" / "treasure_hunt_design_selection.yaml",
 )
 
 
@@ -162,6 +163,21 @@ class PresetTests(unittest.TestCase):
                 StepKind.CRITICIZE,
                 StepKind.SYNTHESIZE,
             },
+        )
+
+    def test_treasure_hunt_design_selection_preset_shape(self) -> None:
+        protocol = load_protocol_yaml(
+            ROOT / "presets" / "treasure_hunt_design_selection.yaml"
+        )
+
+        self.assertEqual(protocol.id, "treasure_hunt_design_selection")
+        self.assertEqual(protocol.steps[-2].id, "select_design_material")
+        self.assertEqual(protocol.steps[-2].kind, StepKind.PROMPT)
+        self.assertEqual(protocol.steps[-2].produces.output, "selected_design_material")
+        self.assertEqual(protocol.steps[-2].produces.kind, "selection")
+        self.assertEqual(
+            protocol.steps[-1].inputs,
+            ("game_dna", "selected_design_material"),
         )
 
 

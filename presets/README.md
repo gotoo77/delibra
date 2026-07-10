@@ -19,3 +19,11 @@ care.
 
 Experimental presets should be called out in documentation until repeated use
 shows the recipe is stable enough to treat as ordinary.
+
+## Current Experimental Presets
+
+- `treasure_hunt_design.yaml`: baseline structured treasure hunt design protocol.
+- `treasure_hunt_design_selection.yaml`: variant that adds one selection and
+  compression step before final synthesis to test whether preserving only the
+  strongest ideas and critiques improves the final output under context
+  pressure.

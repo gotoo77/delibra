@@ -1,0 +1,171 @@
+id: treasure_hunt_design_selection
+version: 0.1.0
+description: Experimental treasure hunt design protocol with selection before final synthesis.
+
+roles:
+  designer:
+    name: Designer
+    instruction: Imagine the overall player experience, pacing, constraints, game DNA, and memorable design shape.
+  logic_architect:
+    name: Logic Architect
+    instruction: Check step coherence, dependency order, solvability, state transitions, and whether every puzzle has enough information.
+  narrator:
+    name: Narrator
+    instruction: Give the hunt a short narrative continuity, clear stakes, and a tone consistent with the requested experience.
+  curator:
+    name: Curator
+    instruction: Verify that domains, references, cultural knowledge, physical constraints, and puzzle materials are relevant rather than artificial.
+  saboteur:
+    name: Saboteur
+    instruction: Look for flaws, ambiguities, dead ends, unwanted shortcuts, puzzles that are too easy, and puzzles that are unfair.
+  playtester:
+    name: Playtester
+    instruction: Simulate target players attempting the hunt, including likely observations, mistakes, requests for hints, and points of confusion.
+  emergent:
+    name: Emergent
+    instruction: Search for an unexpected elegant, memorable, or thematic property that emerges from the constraints and can improve the design.
+  synthesizer:
+    name: Synthesizer
+    instruction: Produce a structured, testable final design that preserves useful critiques, resolves contradictions, and states limitations.
+
+steps:
+  - id: derive_game_dna
+    kind: prompt
+    role: designer
+    roles: null
+    instruction: |
+      Derive the game_dna from the user input. Treat the user input as containing these expected fields:
+      theme, target_players, duration, difficulty, domain_constraints, physical_constraints, desired_tone.
+
+      Produce a compact structured artifact with:
+      - emotion_dominante
+      - niveau_observation
+      - niveau_deduction
+      - niveau_cooperation
+      - niveau_manipulation_physique
+      - place_culture_generale
+      - place_humour
+      - nombre_twists_souhaites
+      - assumptions
+      - unresolved_questions
+    inputs:
+      - user_input
+    produces:
+      output: game_dna
+      kind: game_dna
+  - id: design_candidates
+    kind: fanout
+    role: null
+    roles:
+      - designer
+      - logic_architect
+      - narrator
+      - curator
+      - emergent
+    instruction: |
+      Propose your role-specific contribution to the treasure hunt design using the game_dna and original constraints.
+      Do not merely list puzzles. Include the relevant parts of:
+      - short narrative vision
+      - stage map
+      - main puzzles
+      - progressive hints
+      - expected solutions
+      - blocking risks
+      - possible false leads
+      - solvability checks
+      Keep the design compatible with the stated physical and domain constraints.
+    inputs:
+      - user_input
+      - game_dna
+    produces:
+      output: design_views
+      kind: design_view
+  - id: stress_test_design
+    kind: criticize
+    role: null
+    roles:
+      - saboteur
+      - playtester
+      - logic_architect
+      - curator
+    instruction: |
+      Critique the proposed design views against the game_dna and constraints.
+      Focus on:
+      - incoherent step dependencies
+      - missing clues or unjustified leaps
+      - artificial domain usage
+      - likely player dead ends
+      - accidental alternate solutions
+      - pacing or difficulty mismatch
+      - false leads that become unfair
+      - puzzles that are too easy or too opaque
+      - what a playtester would actually try
+      End with concrete changes needed before final synthesis.
+    inputs:
+      - user_input
+      - game_dna
+      - design_views
+    produces:
+      output: design_critiques
+      kind: critique
+  - id: select_design_material
+    kind: prompt
+    role: synthesizer
+    roles: null
+    instruction: |
+      Compress the candidate designs and critiques into a compact selection artifact for final synthesis.
+      Do not produce the final hunt yet. Select only material that should survive into the final design.
+
+      Produce these sections:
+      1. strongest_puzzle_ideas
+      2. critiques_that_must_be_preserved
+      3. risks_to_mitigate
+      4. novelty_opportunities
+      5. final_synthesis_constraints
+
+      Rules:
+      - Prefer fewer, stronger puzzle ideas over broad coverage.
+      - Preserve concrete critique constraints, not generic warnings.
+      - Keep the artifact compact enough to reduce context pressure for the final synthesis.
+      - If two candidates conflict, choose one direction and explain the trade-off briefly.
+      - Do not invent new runtime primitives or external validation mechanisms.
+    inputs:
+      - user_input
+      - game_dna
+      - design_views
+      - design_critiques
+    produces:
+      output: selected_design_material
+      kind: selection
+  - id: final
+    kind: synthesize
+    role: synthesizer
+    roles: null
+    instruction: |
+      Synthesize a first usable treasure hunt design from the game_dna and selected_design_material.
+      The final answer must be structured and testable, not just a list of riddles.
+
+      Include these sections:
+      1. game_dna
+      2. vision_narrative_courte
+      3. carte_des_etapes
+      4. enigmes_principales
+      5. indices_progressifs
+      6. solutions_attendues
+      7. risques_de_blocage
+      8. fausses_pistes_eventuelles
+      9. verification_de_resolubilite
+      10. propriete_emergente_memorable
+      11. limitations_et_todos
+
+      Use selected_design_material as the controlling source for what to preserve.
+      Do not re-expand every rejected candidate. Resolve contradictions explicitly.
+
+      In limitations_et_todos, explicitly mention that this preset uses only prompt, fanout, criticize, and synthesize;
+      it does not add runtime primitives, specialized puzzle validation, stateful play simulation, or external fact checking.
+    inputs:
+      - game_dna
+      - selected_design_material
+    produces:
+      output: final_synthesis
+      kind: synthesis
