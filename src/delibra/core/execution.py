@@ -302,14 +302,15 @@ def _require_protocol_ref(value: Any) -> JsonMutableObject | JsonFrozenObject:
 def _require_json_object(name: str, value: Any) -> JsonMutableObject | JsonFrozenObject:
     if not isinstance(value, Mapping):
         raise TypeError(f"{name} must be a JSON object")
+    allow_frozen = isinstance(value, MappingProxyType)
     for key, item in value.items():
         if not isinstance(key, str):
             raise TypeError(f"{name} keys must be strings")
-        _require_json_value(f"{name}.{key}", item)
+        _require_json_value(f"{name}.{key}", item, allow_frozen=allow_frozen)
     return value
 
 
-def _require_json_value(name: str, value: Any) -> None:
+def _require_json_value(name: str, value: Any, *, allow_frozen: bool = False) -> None:
     if value is None or isinstance(value, (str, bool)):
         return
     if isinstance(value, int) and not isinstance(value, bool):
@@ -321,9 +322,13 @@ def _require_json_value(name: str, value: Any) -> None:
     if isinstance(value, Mapping):
         _require_json_object(name, value)
         return
-    if isinstance(value, list):
+    if isinstance(value, list) or (allow_frozen and isinstance(value, tuple)):
         for index, item in enumerate(value):
-            _require_json_value(f"{name}[{index}]", item)
+            _require_json_value(
+                f"{name}[{index}]",
+                item,
+                allow_frozen=allow_frozen,
+            )
         return
     raise TypeError(f"{name} must be JSON-compatible")
 

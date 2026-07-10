@@ -15,6 +15,7 @@ Run the CLI:
 ```bash
 delibra --help
 delibra validate --help
+delibra presets list
 delibra run --help
 ```
 
@@ -25,6 +26,40 @@ delibra run \
   --protocol presets/code_review.yaml \
   --provider mock \
   --input-text "Review this change." \
+  --run-output run.json \
+  --trace-output trace.json
+```
+
+Run a named local preset:
+
+```bash
+delibra run \
+  --preset code_review \
+  --provider mock \
+  --input-text "Review this change." \
+  --run-output run.json \
+  --trace-output trace.json
+```
+
+`--protocol` accepts an explicit YAML path. `--preset` resolves a named protocol
+from the local `presets/` directory. Use `delibra presets list` to discover
+available local presets.
+
+Input can be supplied as inline text, a UTF-8 text file, or an inline JSON
+object:
+
+```bash
+delibra run \
+  --preset decision_review \
+  --provider mock \
+  --input-file decision.txt \
+  --run-output run.json \
+  --trace-output trace.json
+
+delibra run \
+  --preset decision_review \
+  --provider mock \
+  --input-json '{"kind":"decision","title":"Ship v1","risk":3}' \
   --run-output run.json \
   --trace-output trace.json
 ```
@@ -105,6 +140,7 @@ Inspect canonical outputs:
 ```bash
 delibra inspect --run run.json
 delibra inspect --run run.json --trace trace.json
+delibra inspect --run run.json --artifact artifact_0001
 ```
 
 Analyze run health metrics:
@@ -124,7 +160,7 @@ scripts/run_real_code_review.sh HEAD~2..HEAD
 
 This scenario runs the `code_review` preset against a real Git diff and writes disposable outputs to a temporary directory by default. It is not a test fixture. Mock is safe and default; it validates the mechanics but does not perform a semantic code review. OpenAI is opt-in. `OPENAI_TIMEOUT_SECONDS` controls the per-request HTTP timeout and defaults to 120 seconds. `OPENAI_MAX_OUTPUT_TOKENS` bounds provider output and defaults to 800. `DELIBRA_PROGRESS_INTERVAL_SECONDS` controls the heartbeat interval and defaults to 2 seconds. Set `DELIBRA_DEBUG_PROVIDER=1` to print runtime-only provider diagnostics such as model, timeout, max output tokens, and input character length. Read `final_synthesis.txt` for the review text, and use `inspect.txt` for the artifact summary. Do not commit generated `input.patch`, `run.json`, `trace.json`, `inspect.txt`, or `final_synthesis.txt` files.
 
-The scenario script is a repository developer workflow, not a stable package interface. It requires Bash and Git; on Windows, use WSL or a compatible Bash environment. Diff selection is deterministic: an explicit range argument wins, otherwise the script uses `HEAD~1..HEAD` when available, otherwise it falls back to `git diff --no-ext-diff --no-textconv` for tracked working-tree changes. Staged-only and untracked files are not included by that fallback. Empty diffs fail with `No diff found. Nothing to review.` OpenAI mode sends the selected diff to the configured provider and may incur API cost. Generated outputs may contain sensitive code and model output; the script creates them with owner-only permissions, but they should still be treated as disposable. Current CLI input is passed through `--input-text`, so very large diffs may hit process argument limits; keep real-use scenario diffs small until a file-input CLI exists.
+The scenario script is a repository developer workflow, not a stable package interface. It requires Bash and Git; on Windows, use WSL or a compatible Bash environment. Diff selection is deterministic: an explicit range argument wins, otherwise the script uses `HEAD~1..HEAD` when available, otherwise it falls back to `git diff --no-ext-diff --no-textconv` for tracked working-tree changes. Staged-only and untracked files are not included by that fallback. Empty diffs fail with `No diff found. Nothing to review.` OpenAI mode sends the selected diff to the configured provider and may incur API cost. Generated outputs may contain sensitive code and model output; the script creates them with owner-only permissions, but they should still be treated as disposable.
 
 Run tests:
 

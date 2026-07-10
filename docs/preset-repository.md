@@ -18,9 +18,10 @@ compare versions, and share it as a stable recipe.
 The preset repository is not a plugin system, package manager, marketplace, or
 runtime registry.
 
-For now, `presets/` is a plain directory of YAML protocols. The runtime still
-executes a protocol by path. There is no preset discovery API, no dependency
-resolution, no remote install mechanism, and no semantic version resolver.
+For now, `presets/` is a plain directory of YAML protocols. The CLI can list
+local presets and resolve a preset by name, but the runtime still executes a
+loaded protocol value. There is no dependency resolution, no remote install
+mechanism, and no semantic version resolver.
 
 ## Principles
 

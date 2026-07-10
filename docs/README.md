@@ -39,8 +39,10 @@ More ambitious comparison input: [treasure_hunt_design_input_gotoo.md](../exampl
 Example mock run:
 
 ```bash
+delibra presets list
+
 delibra run \
-  --protocol presets/treasure_hunt_design.yaml \
+  --preset treasure_hunt_design \
   --provider mock \
   --input-text "$(cat examples/treasure_hunt_design_input.md)" \
   --run-output run.json \
@@ -60,7 +62,7 @@ default_step_budget:
 YAML
 
 delibra run \
-  --protocol presets/treasure_hunt_design.yaml \
+  --preset treasure_hunt_design \
   --provider mock \
   --policy policy.yaml \
   --input-text "$(cat examples/treasure_hunt_design_input.md)" \

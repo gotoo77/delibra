@@ -132,6 +132,43 @@ class InspectTests(unittest.TestCase):
             self.assertEqual(result.stderr, "")
             self.assertIn("trace_events:", result.stdout)
 
+    def test_cli_inspect_artifact_by_id_renders_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            run_path, _ = create_run_and_trace(tmp)
+
+            result = run_cli(
+                "inspect",
+                "--run",
+                str(run_path),
+                "--artifact",
+                "artifact_0001",
+            )
+
+            self.assertEqual(result.returncode, 0)
+            self.assertEqual(result.stderr, "")
+            self.assertIn("artifact: artifact_0001", result.stdout)
+            self.assertIn("output: framing", result.stdout)
+            self.assertIn("kind: framing", result.stdout)
+            self.assertIn("payload:", result.stdout)
+            self.assertIn('"content"', result.stdout)
+            self.assertIn("metadata:", result.stdout)
+
+    def test_cli_inspect_unknown_artifact_fails_cleanly(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            run_path, _ = create_run_and_trace(tmp)
+
+            result = run_cli(
+                "inspect",
+                "--run",
+                str(run_path),
+                "--artifact",
+                "missing_artifact",
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("delibra inspect: artifact not found: missing_artifact", result.stderr)
+            self.assertNotIn("Traceback", result.stderr)
+
     def test_cli_inspect_invalid_json_fails_cleanly(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             run_path = Path(tmp) / "run.json"

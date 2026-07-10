@@ -229,6 +229,20 @@ class DurableExecutionModelTests(unittest.TestCase):
         self.assertEqual(run.status, RunStatus.COMPLETED)
         self.assertEqual(run.to_json(), RUN_JSON)
 
+    def test_run_input_preserves_nested_json_arrays(self) -> None:
+        run_json = {
+            **RUN_JSON,
+            "input": {
+                "kind": "structured",
+                "tags": ["cli", "json"],
+                "decision": {"scores": [1, 2, 3]},
+            },
+        }
+
+        run = Run.from_json(run_json)
+
+        self.assertEqual(run.to_json()["input"], run_json["input"])
+
     def test_run_can_deserialize_null_completed_at(self) -> None:
         run_json = {**RUN_JSON, "status": "running", "completed_at": None}
 

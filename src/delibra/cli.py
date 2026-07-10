@@ -7,12 +7,19 @@ from collections.abc import Sequence
 
 from delibra import __version__
 from delibra.app.analysis import RunAnalysis, analyze_run
-from delibra.app.inspection import RunInspection, inspect_run
+from delibra.app.inputs import input_from_file, input_from_json, input_from_text
+from delibra.app.inspection import (
+    ArtifactDetail,
+    RunInspection,
+    inspect_artifact,
+    inspect_run,
+)
 from delibra.app.local_diagnostics import (
     LocalDiagnostics,
     diagnose_local_providers,
 )
 from delibra.app.providers import build_llm_client
+from delibra.app.presets import PresetError, PresetInfo, list_presets, load_preset
 from delibra.app.storage import load_run_json, load_trace_json, write_run_outputs
 from delibra.policy_loader import PolicyLoadError, load_policy_yaml
 from delibra.protocol_loader import ProtocolLoadError, load_protocol_yaml
@@ -64,14 +71,19 @@ def build_parser() -> argparse.ArgumentParser:
             "fanout and criticize steps execute sequentially."
         ),
     )
-    run.add_argument("--protocol", required=True, help="path to a protocol YAML file")
+    protocol_source = run.add_mutually_exclusive_group(required=True)
+    protocol_source.add_argument("--protocol", help="path to a protocol YAML file")
+    protocol_source.add_argument("--preset", help="name of a preset from presets/")
     run.add_argument(
         "--provider",
         choices=("mock", "openai", "ollama"),
         default="mock",
         help="provider: mock, openai, ollama; default mock",
     )
-    run.add_argument("--input-text", required=True, help="text input for the run")
+    input_source = run.add_mutually_exclusive_group(required=True)
+    input_source.add_argument("--input-text", help="text input for the run")
+    input_source.add_argument("--input-file", help="path to a UTF-8 text input file")
+    input_source.add_argument("--input-json", help="inline JSON object input for the run")
     run.add_argument(
         "--policy",
         help="path to an execution policy YAML file",
@@ -92,6 +104,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     inspect.add_argument("--run", required=True, help="path to canonical run JSON")
     inspect.add_argument("--trace", help="path to canonical trace JSON")
+    inspect.add_argument("--artifact", help="artifact id to render with payload")
     inspect.set_defaults(handler=_inspect)
 
     analyze_run = subparsers.add_parser(
@@ -115,6 +128,19 @@ def build_parser() -> argparse.ArgumentParser:
         description="Diagnose local LLM providers without installing or writing files.",
     )
     doctor_local.set_defaults(handler=_doctor_local)
+
+    presets = subparsers.add_parser(
+        "presets",
+        help="inspect available local presets",
+        description="Inspect available local presets.",
+    )
+    presets_subparsers = presets.add_subparsers(dest="presets_command", metavar="COMMAND")
+    presets_list = presets_subparsers.add_parser(
+        "list",
+        help="list available local presets",
+        description="List available local presets from the local presets directory.",
+    )
+    presets_list.set_defaults(handler=_presets_list)
 
     return parser
 
@@ -149,8 +175,9 @@ def _validate(args: argparse.Namespace) -> int:
 
 def _run(args: argparse.Namespace) -> int:
     try:
-        protocol = load_protocol_yaml(args.protocol)
-    except ProtocolLoadError as exc:
+        protocol = _load_protocol_source(args)
+        input_ref = _load_run_input(args)
+    except (ProtocolLoadError, PresetError, OSError, TypeError, ValueError) as exc:
         print(f"delibra run: {exc}", file=sys.stderr)
         return 1
     try:
@@ -163,7 +190,7 @@ def _run(args: argparse.Namespace) -> int:
         ids = default_engine_ids()
         result = execute_protocol(
             protocol,
-            {"kind": "text", "content": args.input_text},
+            input_ref,
             llm=build_llm_client(args.provider),
             ids=ids,
             clock=SystemClock(),
@@ -189,6 +216,20 @@ def _run(args: argparse.Namespace) -> int:
 
     _write_run_outputs(args, result)
     return 0
+
+
+def _load_protocol_source(args: argparse.Namespace):
+    if args.protocol is not None:
+        return load_protocol_yaml(args.protocol)
+    return load_preset(args.preset)
+
+
+def _load_run_input(args: argparse.Namespace):
+    if args.input_text is not None:
+        return input_from_text(args.input_text)
+    if args.input_file is not None:
+        return input_from_file(args.input_file)
+    return input_from_json(args.input_json)
 
 
 def _build_progress_printer(provider: str):
@@ -247,6 +288,14 @@ def _inspect(args: argparse.Namespace) -> int:
         print(f"delibra inspect: {exc}", file=sys.stderr)
         return 1
 
+    if args.artifact is not None:
+        try:
+            print(_render_artifact_detail(inspect_artifact(run, args.artifact)))
+        except ValueError as exc:
+            print(f"delibra inspect: {exc}", file=sys.stderr)
+            return 1
+        return 0
+
     print(_render_inspection(inspect_run(run, trace)))
     return 0
 
@@ -271,6 +320,17 @@ def _doctor_local(_args: argparse.Namespace) -> int:
     return 0
 
 
+def _presets_list(_args: argparse.Namespace) -> int:
+    try:
+        presets = list_presets()
+    except (OSError, ProtocolLoadError, TypeError, ValueError) as exc:
+        print(f"delibra presets list: {exc}", file=sys.stderr)
+        return 1
+
+    print(_render_presets_list(presets))
+    return 0
+
+
 def _render_inspection(inspection: RunInspection) -> str:
     lines = [
         f"run: {inspection.run_id}",
@@ -282,13 +342,42 @@ def _render_inspection(inspection: RunInspection) -> str:
     for artifact in inspection.artifacts:
         lines.append(
             "  "
-            f"- output={artifact.output} "
+            f"- id={artifact.artifact_id} "
+            f"output={artifact.output} "
             f"kind={artifact.kind} "
             f"producer_step_id={artifact.producer_step_id} "
             f"producer_role_id={artifact.producer_role_id}"
         )
     if inspection.trace_event_count is not None:
         lines.append(f"trace_events: {inspection.trace_event_count}")
+    return "\n".join(lines)
+
+
+def _render_artifact_detail(artifact: ArtifactDetail) -> str:
+    lines = [
+        f"artifact: {artifact.artifact_id}",
+        f"output: {artifact.output}",
+        f"kind: {artifact.kind}",
+        f"producer_step_id: {artifact.producer_step_id}",
+        f"producer_role_id: {artifact.producer_role_id}",
+        "payload:",
+        json.dumps(artifact.payload, indent=2, sort_keys=True),
+        "metadata:",
+        json.dumps(artifact.metadata, indent=2, sort_keys=True),
+    ]
+    return "\n".join(lines)
+
+
+def _render_presets_list(presets: tuple[PresetInfo, ...]) -> str:
+    lines = ["Available presets", "-----------------"]
+    if not presets:
+        lines.append("- none found")
+        return "\n".join(lines)
+    for preset in presets:
+        lines.append(
+            f"- {preset.name}: {preset.protocol_id}@{preset.version} "
+            f"- {preset.description}"
+        )
     return "\n".join(lines)
 
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
 from delibra.core import (
@@ -409,7 +409,7 @@ def _execute_step_for_role(
             inputs={
                 USER_INPUT_RESERVED_ID: None
                 if resolved_inputs.user_input is None
-                else dict(resolved_inputs.user_input),
+                else _json_mutable_value(resolved_inputs.user_input),
                 "artifact_ids": list(resolved_inputs.artifact_ids),
                 "artifacts": _resolve_input_artifacts(run, resolved_inputs.artifact_ids),
             },
@@ -556,6 +556,14 @@ def _emit_progress(
 def _resolve_input_artifacts(run: Run, artifact_ids: tuple[str, ...]) -> list[JsonMutableObject]:
     artifacts_by_id = {artifact.id: artifact for artifact in run.artifacts}
     return [artifacts_by_id[artifact_id].to_json() for artifact_id in artifact_ids]
+
+
+def _json_mutable_value(value):
+    if isinstance(value, Mapping):
+        return {key: _json_mutable_value(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_mutable_value(item) for item in value]
+    return value
 
 
 def _estimated_request_chars(request: LLMRequest) -> int:

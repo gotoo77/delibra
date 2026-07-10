@@ -1,7 +1,13 @@
 """Application-facing helpers shared by Delibra interfaces."""
 
 from delibra.app.analysis import RunAnalysis, analyze_run
-from delibra.app.inspection import RunInspection, inspect_run
+from delibra.app.inputs import input_from_file, input_from_json, input_from_text
+from delibra.app.inspection import (
+    ArtifactDetail,
+    RunInspection,
+    inspect_artifact,
+    inspect_run,
+)
 from delibra.app.local_diagnostics import (
     LocalDiagnostics,
     LocalProviderProbe,
@@ -17,9 +23,11 @@ from delibra.app.models import (
     ValidationResult,
 )
 from delibra.app.providers import build_llm_client
+from delibra.app.presets import PresetError, PresetInfo, list_presets, load_preset
 from delibra.app.storage import load_run_json, load_trace_json, write_run_outputs
 
 __all__ = [
+    "ArtifactDetail",
     "ProviderConfig",
     "RunAnalysis",
     "RunInspection",
@@ -31,11 +39,19 @@ __all__ = [
     "analyze_run",
     "build_llm_client",
     "diagnose_local_providers",
+    "input_from_file",
+    "input_from_json",
+    "input_from_text",
+    "inspect_artifact",
     "inspect_run",
+    "list_presets",
     "load_run_json",
+    "load_preset",
     "load_trace_json",
     "LocalDiagnostics",
     "LocalProviderProbe",
     "LocalProviderStatus",
+    "PresetError",
+    "PresetInfo",
     "write_run_outputs",
 ]
