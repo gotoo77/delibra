@@ -73,7 +73,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     protocol_source = run.add_mutually_exclusive_group(required=True)
     protocol_source.add_argument("--protocol", help="path to a protocol YAML file")
-    protocol_source.add_argument("--preset", help="name of a preset from presets/")
+    protocol_source.add_argument("--preset", help="name of a local preset")
     run.add_argument(
         "--provider",
         choices=("mock", "openai", "ollama"),
@@ -83,7 +83,10 @@ def build_parser() -> argparse.ArgumentParser:
     input_source = run.add_mutually_exclusive_group(required=True)
     input_source.add_argument("--input-text", help="text input for the run")
     input_source.add_argument("--input-file", help="path to a UTF-8 text input file")
-    input_source.add_argument("--input-json", help="inline JSON object input for the run")
+    input_source.add_argument(
+        "--input-json",
+        help="inline JSON object input; arrays are allowed inside the object",
+    )
     run.add_argument(
         "--policy",
         help="path to an execution policy YAML file",
