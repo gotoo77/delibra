@@ -22,6 +22,8 @@ shows the recipe is stable enough to treat as ordinary.
 
 ## Current Experimental Presets
 
+- `puzzle_design.yaml`: micro-protocol for designing one concrete, playable,
+  testable puzzle before composing larger treasure hunt structures.
 - `treasure_hunt_design.yaml`: baseline structured treasure hunt design protocol.
 - `treasure_hunt_design_selection.yaml`: variant that adds one selection and
   compression step before final synthesis to test whether preserving only the

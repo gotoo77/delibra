@@ -20,6 +20,7 @@ PRESET_PATHS = (
     ROOT / "presets" / "code_review.yaml",
     ROOT / "presets" / "design_review.yaml",
     ROOT / "presets" / "decision_review.yaml",
+    ROOT / "presets" / "puzzle_design.yaml",
     ROOT / "presets" / "treasure_hunt_design.yaml",
     ROOT / "presets" / "treasure_hunt_design_selection.yaml",
 )

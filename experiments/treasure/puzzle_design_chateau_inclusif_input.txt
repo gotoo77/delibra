@@ -1,0 +1,16 @@
+Conçois une seule énigme jouable pour six joueurs.
+
+Contraintes :
+- Deux joueurs adorent les énigmes.
+- Un joueur déteste les cadenas : l’énigme ne doit pas utiliser de cadenas réel ni symbolique comme mécanisme central.
+- Deux joueurs aiment les jeux de rôle, mais l’énigme doit rester solvable sans performance théâtrale obligatoire.
+- Un joueur est dyslexique : l’énigme doit être inclusive, lisible, et ne doit pas faire de la dyslexie un pouvoir spécial ou un rôle obligatoire.
+- Budget matériel maximum : 40 €.
+- Le jeu se déroule dans un château qui ferme à 18 h.
+- L’énigme doit fonctionner même s’il pleut.
+- Les six joueurs doivent coopérer sans jamais se séparer.
+- L’ambiance doit raconter un fragment d’histoire tragique avec une issue positive.
+
+Attendu :
+Produis une énigme complète, concrète et testable.
+Je veux savoir exactement ce que les joueurs voient, touchent, déplacent ou lisent, comment ils raisonnent, quelle est la réponse exacte, et comment la réponse est validée.

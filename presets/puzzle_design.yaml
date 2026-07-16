@@ -1,0 +1,305 @@
+id: puzzle_design
+version: 0.1.3
+description: Experimental micro-protocol for designing one playable and testable puzzle.
+
+roles:
+  framer:
+    name: Framer
+    instruction: Extract the puzzle brief, constraints, exclusions, player profile, and unknowns from the input. Preserve negative polarity exactly.
+  puzzle_designer:
+    name: Puzzle Designer
+    instruction: Design one concrete puzzle with observable materials, player actions, reasoning path, and exact answer.
+  logic_architect:
+    name: Logic Architect
+    instruction: Check clue sufficiency, dependency order, answer validation, alternate solutions, and recovery paths.
+  playtester:
+    name: Playtester
+    instruction: Simulate real players trying the puzzle, including what they see, try, misunderstand, and ask for.
+  curator:
+    name: Curator
+    instruction: Check whether materials, references, physical objects, budget, weather, location, and cultural assumptions are justified.
+  inclusion_reviewer:
+    name: Inclusion Reviewer
+    instruction: Check accessibility and inclusion. Treat disability constraints as design constraints, never as magical abilities or forced roles.
+  quality_gate:
+    name: Quality Gate
+    instruction: Decide whether the repaired puzzle is a playable single puzzle. Prefer explicit failure over accepting vague or multi-puzzle concepts.
+  synthesizer:
+    name: Synthesizer
+    instruction: Produce one final puzzle specification or mark it NON_JOUABLE. Reject concepts, summaries, and multi-puzzle game outlines.
+
+steps:
+  - id: frame_puzzle_brief
+    kind: prompt
+    role: framer
+    roles: null
+    instruction: |
+      Extract a brief for exactly one puzzle from the user input.
+
+      Produce a compact structured artifact with:
+      - puzzle_goal
+      - target_players
+      - hard_constraints
+      - soft_preferences
+      - forbidden_or_sensitive_elements
+      - accessibility_constraints
+      - available_materials_or_budget
+      - environmental_constraints
+      - narrative_constraints
+      - assumptions
+      - unresolved_questions
+
+      Rules:
+      - Preserve the polarity of every constraint exactly. "Detests locks" means dislike/exclusion, never "tests locks" or lock expertise.
+      - If the input asks for a full game, reduce the task to one puzzle that could become a component of that game.
+      - If someone dislikes an object or activity, do not turn that dislike into expertise or a required spotlight.
+      - Put every stated dislike, exclusion, or forbidden mechanism in forbidden_or_sensitive_elements.
+      - If a disability or accessibility need is mentioned, frame it as an inclusion constraint for the whole puzzle.
+      - If the input does not provide a specific physical objective, leave puzzle_goal as "design one playable puzzle"; do not invent a door, lock, room transition, mechanism, treasure, or hidden passage.
+      - Do not invent concrete locations, props, locks, codes, or cultural references unless they are supported by the input or listed as assumptions.
+      - target_players must separate player count from preferences and constraints. Do not encode dislikes or disabilities as player roles.
+    inputs:
+      - user_input
+    produces:
+      output: puzzle_brief
+      kind: puzzle_brief
+  - id: draft_single_puzzle
+    kind: fanout
+    role: null
+    roles:
+      - puzzle_designer
+      - logic_architect
+      - curator
+      - inclusion_reviewer
+    instruction: |
+      Propose a role-specific draft for exactly one playable puzzle from the puzzle_brief and original input.
+
+      Each draft must include:
+      - puzzle_id
+      - title
+      - objective
+      - player_facing_setup
+      - materials
+      - what_players_see
+      - what_players_can_manipulate
+      - clue_inventory
+      - reasoning_path
+      - exact_expected_answer
+      - validation_method
+      - hint_ladder
+      - specific_failure_modes
+      - recovery_paths
+      - specific_false_leads
+      - constraint_trace
+
+      Rules:
+      - Stay within one puzzle. Do not propose a full game or a sequence of puzzles.
+      - Do not describe an initial concept, campaign, hunt, scattered reliquaries, multiple rooms, multiple puzzles, or a progression through a castle.
+      - The puzzle must be runnable at one table or one fixed spot unless the input explicitly provides a location layout.
+      - The exact_expected_answer must be a concrete word, phrase, number, ordering, object, or action.
+      - exact_expected_answer must not be a category such as "the correct combination", "an astrological symbol", or "the right order" unless the exact combination, symbol, or order is also named.
+      - The reasoning_path must explain how players can derive that answer from visible clues.
+      - The validation_method must say how the game confirms success without relying on the designer's intent.
+      - The validation_method must be buildable within the stated budget and available materials. Do not use automatic doors, hidden electronics, magnetic mechanisms, sensors, or room transitions unless the input explicitly provides them.
+      - Avoid generic statements such as "players communicate" unless tied to a concrete action or clue.
+      - Do not assign a unique required role to a dyslexic or disabled player. Make the puzzle readable and solvable by the group.
+      - If a player dislikes locks, do not require a lock unless the brief explicitly permits an optional or symbolic substitute.
+      - If the puzzle uses text in another language, include the exact text, exact translation, and the non-specialist clue that makes it solvable without external knowledge.
+      - If you cannot produce all required fields concretely, output NON_JOUABLE and list the missing decisions instead of proposing a concept.
+    inputs:
+      - user_input
+      - puzzle_brief
+    produces:
+      output: puzzle_drafts
+      kind: puzzle_spec
+  - id: critique_single_puzzle
+    kind: criticize
+    role: null
+    roles:
+      - logic_architect
+      - playtester
+      - curator
+      - inclusion_reviewer
+    instruction: |
+      Critique the puzzle_drafts against the puzzle_brief and original input.
+
+      Produce defects only. Do not summarize the proposed puzzle except inside an affected_element field.
+
+      Focus on concrete defects:
+      - missing visible clue
+      - unjustified reasoning leap
+      - non-exact answer or non-testable solution
+      - validation that does not actually prove success
+      - alternate solution that bypasses the intended reasoning
+      - false lead that becomes unfair
+      - failure mode without recovery
+      - physical, weather, budget, or location mismatch
+      - accessibility problem, forced spotlight, or harmful role assignment
+      - contradiction with a stated dislike or exclusion
+
+      For every issue, state:
+      - severity
+      - exact affected puzzle element
+      - why it matters in play
+      - concrete correction required
+
+      Mandatory checks:
+      - Is the exact answer literally exact?
+      - Are every clue and manipulation visible or buildable?
+      - Is validation possible with the listed materials and budget?
+      - Does the puzzle avoid invented automatic doors, hidden mechanisms, and unsupported room transitions?
+      - Does the draft avoid becoming a full game, multi-room hunt, or sequence of several puzzles?
+      - Are stated dislikes and accessibility constraints preserved without inversion?
+      - Are risks and false leads specific rather than generic?
+
+      If no issue is found after a mandatory check, write "no issue" for that check.
+      Do not rewrite the puzzle here. Produce critique only.
+    inputs:
+      - user_input
+      - puzzle_brief
+      - puzzle_drafts
+    produces:
+      output: puzzle_critiques
+      kind: critique
+  - id: repair_single_puzzle
+    kind: prompt
+    role: synthesizer
+    roles: null
+    instruction: |
+      Select and repair the strongest material from the puzzle_drafts using the puzzle_critiques.
+
+      Produce a revised single-puzzle artifact with the same fields as the draft:
+      - puzzle_id
+      - title
+      - objective
+      - player_facing_setup
+      - materials
+      - what_players_see
+      - what_players_can_manipulate
+      - clue_inventory
+      - reasoning_path
+      - exact_expected_answer
+      - validation_method
+      - hint_ladder
+      - specific_failure_modes
+      - recovery_paths
+      - specific_false_leads
+      - constraint_trace
+      - unresolved_limitations
+
+      Rules:
+      - Keep exactly one puzzle.
+      - Output must be either a complete field-by-field puzzle_spec or NON_JOUABLE. Do not output prose summaries, initial concepts, design intentions, or "further iterations can be made".
+      - Merge only compatible material from the drafts; do not preserve multiple puzzle variants.
+      - Reject draft material that uses an invented door, hidden mechanism, automatic validation, or non-buildable prop unless the input explicitly provides it.
+      - Reject draft material whose answer is not exact.
+      - Reject draft material that describes a full game, several reliquaries spread through a castle, multiple puzzles, or role-based "unique skills".
+      - Replace vague intentions with observable design details.
+      - Preserve only false leads that are named and recoverable.
+      - Every specific_failure_mode must have a matching recovery_path.
+      - Every hard constraint must appear in constraint_trace as satisfied, violated, or unresolved.
+      - If a critique cannot be resolved, state it in unresolved_limitations rather than hiding it.
+      - If no repaired playable puzzle can be produced, state NON_JOUABLE and list the missing concrete design decisions.
+    inputs:
+      - user_input
+      - puzzle_brief
+      - puzzle_drafts
+      - puzzle_critiques
+    produces:
+      output: repaired_puzzle
+      kind: puzzle_spec
+  - id: validate_repaired_puzzle
+    kind: prompt
+    role: quality_gate
+    roles: null
+    instruction: |
+      Validate repaired_puzzle against puzzle_brief and the original input.
+
+      Output exactly one of these two shapes:
+
+      PASS:
+      - verdict: PASS
+      - exact_expected_answer: copy the exact answer from repaired_puzzle
+      - validation_method: copy the validation method from repaired_puzzle
+      - why_single_puzzle: explain why this is one puzzle rather than a game outline
+      - buildability: list the materials and how validation works within budget
+
+      FAIL:
+      - verdict: FAIL
+      - failed_checks:
+        - check: exact answer is literal and concrete
+          result: PASS or FAIL
+          evidence: short quote or paraphrase from repaired_puzzle
+        - check: validation is physically buildable from listed materials
+          result: PASS or FAIL
+          evidence: short quote or paraphrase from repaired_puzzle
+        - check: design is exactly one puzzle, not a hunt, full game, sequence, or castle-wide search
+          result: PASS or FAIL
+          evidence: short quote or paraphrase from repaired_puzzle
+        - check: all players stay together at one table or fixed spot unless input explicitly provides a route
+          result: PASS or FAIL
+          evidence: short quote or paraphrase from repaired_puzzle
+        - check: no invented automatic door, hidden mechanism, informant, scattered relics, or unsupported room transition
+          result: PASS or FAIL
+          evidence: short quote or paraphrase from repaired_puzzle
+        - check: dislikes and accessibility constraints are preserved without inversion
+          result: PASS or FAIL
+          evidence: short quote or paraphrase from repaired_puzzle
+      - blocking_reasons: list the concrete reasons the puzzle must be rejected
+
+      Strict rules:
+      - If repaired_puzzle says "initial concept", "further iterations", "various puzzles", "scattered", "throughout the castle", "hidden informant", "main door opens", or similar, verdict must be FAIL.
+      - If exact_expected_answer is a goal state such as "the door opens", "the relics in hand", "find the order", or "discover the solution", verdict must be FAIL.
+      - If validation requires an automatic door, hidden actor, hidden electronics, unlisted route, or unbudgeted mechanism, verdict must be FAIL.
+      - If repaired_puzzle is written as a prose summary instead of a field-by-field puzzle_spec, verdict must be FAIL.
+    inputs:
+      - user_input
+      - puzzle_brief
+      - repaired_puzzle
+    produces:
+      output: puzzle_validation
+      kind: validation
+  - id: final
+    kind: synthesize
+    role: synthesizer
+    roles: null
+    instruction: |
+      Produce the final answer as one complete, playable puzzle specification.
+
+      Include these sections:
+      1. resume_court
+      2. fiche_enigme
+      3. materiel_et_mise_en_place
+      4. ce_que_voient_les_joueurs
+      5. actions_possibles
+      6. chemin_de_raisonnement
+      7. reponse_exacte
+      8. validation
+      9. indices_progressifs
+      10. risques_specifiques_et_recuperation
+      11. fausses_pistes_eventuelles
+      12. accessibilite_et_inclusion
+      13. trace_des_contraintes
+      14. limites_et_todos
+
+      Final quality bar:
+      - First read puzzle_validation. If verdict is FAIL, output NON_JOUABLE and list failed checks. Do not repair, soften, or overrule a FAIL verdict.
+      - If repaired_puzzle is a prose summary, initial concept, full-game outline, or lacks exact_expected_answer, output NON_JOUABLE with the failed checks.
+      - A reader must be able to build and run the puzzle from this answer.
+      - The response must be a single puzzle, not a game concept, not a treasure hunt, not a sequence of puzzles, and not a castle-wide search.
+      - The response must contain one exact solution, not just an intention.
+      - The response must not use a vague answer such as "la bonne combinaison", "le symbole complet", or "la séquence correcte" unless the exact combination, symbol, or sequence is explicitly written.
+      - The validation must be physically buildable from the listed materials and budget. Do not validate by opening a door, triggering an automatic mechanism, or moving to another room unless those props are explicitly specified and budgeted.
+      - The puzzle must not depend on separating players unless explicitly requested.
+      - The puzzle must not use disability, dyslexia, dislike, or discomfort as a super-power, punishment, or mandatory spotlight.
+      - Generic risks such as "bad communication" are forbidden unless tied to a specific clue, action, or recovery path.
+      - If the repaired_puzzle fails any final quality bar, output NON_JOUABLE with the failed checks and do not pretend the puzzle is playable.
+      - In limites_et_todos, explicitly mention that this preset designs one puzzle only and does not compose a full treasure hunt.
+    inputs:
+      - user_input
+      - puzzle_brief
+      - repaired_puzzle
+      - puzzle_validation
+    produces:
+      output: final_synthesis
+      kind: synthesis

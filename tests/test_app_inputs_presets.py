@@ -55,6 +55,7 @@ class AppInputsPresetsTests(unittest.TestCase):
         names = {preset.name for preset in list_presets(ROOT / "presets")}
 
         self.assertIn("code_review", names)
+        self.assertIn("puzzle_design", names)
         self.assertIn("treasure_hunt_design_selection", names)
 
     def test_resolve_preset_rejects_path_traversal(self) -> None:
