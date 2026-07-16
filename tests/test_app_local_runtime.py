@@ -84,7 +84,7 @@ class AppLocalRuntimeTests(unittest.TestCase):
         self.assertEqual(check.model, "llama3.2")
         self.assertEqual(check.duration_seconds, 0.25)
         self.assertEqual(seen_payloads[0]["model"], "llama3.2")
-        self.assertEqual(seen_payloads[0]["options"], {"num_predict": 8})
+        self.assertEqual(seen_payloads[0]["options"], {"num_predict": 256})
 
     def test_explicit_model_overrides_ollama_model_env(self) -> None:
         seen_payloads = []
@@ -192,6 +192,29 @@ class AppLocalRuntimeTests(unittest.TestCase):
         check = assessment.inference_checks[0]
         self.assertTrue(check.attempted)
         self.assertEqual(check.status, "invalid_response")
+
+    def test_reasoning_model_can_exhaust_tiny_output_limit_before_response(self) -> None:
+        def qwen3_like_transport(_config, payload):
+            num_predict = payload.get("options", {}).get("num_predict")
+            if isinstance(num_predict, int) and num_predict <= 192:
+                return {
+                    "response": "",
+                    "thinking": "Okay, the user wants me to reply",
+                    "done": True,
+                    "done_reason": "length",
+                    "eval_count": num_predict,
+                }
+            return {"response": "OK", "thinking": "reasoning", "done": True}
+
+        assessment = assess_local_runtime(
+            LocalRuntimeIntent(operation="check_inference", model="qwen3:4b"),
+            diagnostics=LocalDiagnostics(statuses=(ollama_status(models=("qwen3:4b",)),)),
+            ollama_transport=qwen3_like_transport,
+        )
+
+        check = assessment.inference_checks[0]
+        self.assertTrue(check.attempted)
+        self.assertEqual(check.status, "succeeded")
 
     def test_provider_error_is_distinct(self) -> None:
         assessment = assess_local_runtime(
