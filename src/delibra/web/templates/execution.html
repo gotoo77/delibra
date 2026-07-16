@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Execution{% endblock %}
+{% block content %}
+<section class="execution" data-events-url="{{ url_for('execution_events', execution_id=execution.id) }}">
+  <h1>Execution</h1>
+  <dl class="summary">
+    <div><dt>Status</dt><dd id="execution-status">{{ execution.status }}</dd></div>
+    <div><dt>Elapsed</dt><dd id="execution-elapsed">{{ '%.2f'|format(execution.elapsed_seconds) }}s</dd></div>
+    <div><dt>Artifacts</dt><dd id="execution-artifacts">{{ execution.artifact_count if execution.artifact_count is not none else 'unknown' }}</dd></div>
+  </dl>
+
+  {% if execution.error %}
+    <div class="errors" role="alert"><p>{{ execution.error }}</p></div>
+  {% endif %}
+
+  {% if result_key %}
+    <p><a class="button primary" href="{{ url_for('run_detail', run_key=result_key) }}">Open result</a></p>
+  {% endif %}
+
+  {% if execution.show_progress %}
+    <h2>Progress</h2>
+    <ol id="progress-log" class="event-log">
+      {% for item in execution.progress %}
+        <li>
+          <span>+{{ '%.2f'|format(item.elapsed_seconds) }}s</span>
+          {{ item.event.type }}
+          {% if item.event.step_id %} step={{ item.event.step_id }}{% endif %}
+          {% if item.event.role_id %} role={{ item.event.role_id }}{% endif %}
+          {% if item.event.artifact_id %} artifact={{ item.event.artifact_id }}{% endif %}
+        </li>
+      {% endfor %}
+    </ol>
+  {% else %}
+    <p class="muted">Progress event display is disabled for this execution.</p>
+  {% endif %}
+</section>
+<script src="{{ url_for('static', path='execution.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Run {{ persisted.label }}{% endblock %}
+{% block content %}
+<section>
+  <p class="eyebrow">{{ persisted.label }}</p>
+  <h1>{{ persisted.run.protocol.id }}@{{ persisted.run.protocol.version }}</h1>
+  <dl class="summary">
+    <div><dt>Status</dt><dd>{{ persisted.run.status.value }}</dd></div>
+    <div><dt>Duration</dt><dd>{{ analysis.duration_seconds if analysis.duration_seconds is not none else 'unknown' }}</dd></div>
+    <div><dt>Artifacts</dt><dd>{{ persisted.run.artifacts | length }}</dd></div>
+    <div><dt>Trace events</dt><dd>{{ analysis.trace_event_count }}</dd></div>
+  </dl>
+  <p class="muted">run.json: {{ persisted.run_label }}</p>
+  <p class="muted">trace.json: {{ persisted.trace_label }}</p>
+</section>
+
+{% if final_artifact %}
+<section>
+  <h2>Final synthesis</h2>
+  {% set final_text = payload_primary_text(final_artifact.payload) %}
+  {% if final_text %}
+    <div class="readable-text">{{ final_text }}</div>
+  {% endif %}
+  {% set final_fields = payload_fields(final_artifact.payload) %}
+  {% if final_fields %}
+    <dl class="payload-fields">
+      {% for field in final_fields %}
+        <div class="{{ 'wide' if field.multiline else '' }}">
+          <dt>{{ field.label }}</dt>
+          <dd>{{ field.text }}</dd>
+        </div>
+      {% endfor %}
+    </dl>
+  {% endif %}
+  <details class="raw-json">
+    <summary>Raw payload JSON</summary>
+    <pre>{{ payload_text(final_artifact.payload) }}</pre>
+  </details>
+</section>
+{% endif %}
+
+<section>
+  <h2>Mechanical analysis</h2>
+  <dl class="summary">
+    <div><dt>Total payload chars</dt><dd>{{ analysis.total_payload_chars }}</dd></div>
+    <div><dt>Estimated tokens upper bound</dt><dd>{{ analysis.estimated_tokens_upper_bound }}</dd></div>
+    <div><dt>Largest payload</dt><dd>{{ analysis.largest_artifact.artifact_id if analysis.largest_artifact else 'none' }}</dd></div>
+  </dl>
+</section>
+
+<section>
+  <h2>Artifacts</h2>
+  {% for group in steps %}
+    <article class="step">
+      <h3>{{ group.step_id }}</h3>
+      {% for artifact in group.artifacts %}
+        <details open>
+          <summary>{{ artifact.id }} - {{ artifact.output }} - {{ artifact.kind }} - role={{ artifact.producer_role_id }}</summary>
+          <p class="muted">Created at {{ artifact.created_at }}</p>
+          <h4>Payload</h4>
+          {% set primary_text = payload_primary_text(artifact.payload) %}
+          {% if primary_text %}
+            <div class="readable-text compact">{{ primary_text }}</div>
+          {% endif %}
+          {% set fields = payload_fields(artifact.payload) %}
+          {% if fields %}
+            <dl class="payload-fields">
+              {% for field in fields %}
+                <div class="{{ 'wide' if field.multiline else '' }}">
+                  <dt>{{ field.label }}</dt>
+                  <dd>{{ field.text }}</dd>
+                </div>
+              {% endfor %}
+            </dl>
+          {% endif %}
+          <details class="raw-json">
+            <summary>Raw payload JSON</summary>
+            <pre>{{ payload_text(artifact.payload) }}</pre>
+          </details>
+          <h4>Metadata</h4>
+          {% set metadata_fields = payload_fields(artifact.metadata) %}
+          {% if metadata_fields %}
+            <dl class="payload-fields">
+              {% for field in metadata_fields %}
+                <div class="{{ 'wide' if field.multiline else '' }}">
+                  <dt>{{ field.label }}</dt>
+                  <dd>{{ field.text }}</dd>
+                </div>
+              {% endfor %}
+            </dl>
+          {% else %}
+            <p class="muted">No metadata.</p>
+          {% endif %}
+          <details class="raw-json">
+            <summary>Raw metadata JSON</summary>
+            <pre>{{ payload_text(artifact.metadata) }}</pre>
+          </details>
+        </details>
+      {% endfor %}
+    </article>
+  {% endfor %}
+</section>
+{% endblock %}

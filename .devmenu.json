@@ -119,6 +119,13 @@
           "argv": ["uv", "run", "delibra", "run", "--help"]
         },
         {
+          "label": "Web UI locale",
+          "icon": "🌐",
+          "key": "w",
+          "command": "bash -lc 'uv run delibra web --host \"${DELIBRA_WEB_HOST:-0.0.0.0}\" --port \"${DELIBRA_WEB_PORT:-8000}\" --experiments-root \"${DELIBRA_EXPERIMENTS_ROOT:-experiments}\"'",
+          "desc": "Lance l interface web locale Delibra. Devmenu bind sur 0.0.0.0 par defaut pour WSL; variables: DELIBRA_WEB_HOST, DELIBRA_WEB_PORT, DELIBRA_EXPERIMENTS_ROOT"
+        },
+        {
           "label": "Validate fixture",
           "icon": "✅",
           "key": "d",

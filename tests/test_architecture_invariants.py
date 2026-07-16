@@ -17,6 +17,7 @@ from delibra.protocol_validator import validate_protocol
 ROOT = Path(__file__).resolve().parents[1]
 CORE = ROOT / "src" / "delibra" / "core"
 RUNTIME = ROOT / "src" / "delibra" / "runtime"
+APP = ROOT / "src" / "delibra" / "app"
 PRESETS = ROOT / "presets"
 CONCEPTS = ROOT / "docs" / "concepts"
 ALLOWED_PRIMITIVES = {"prompt", "fanout", "criticize", "synthesize"}
@@ -124,6 +125,26 @@ class ArchitectureInvariantTests(unittest.TestCase):
                         ),
                         imports,
                     )
+
+    def test_core_runtime_and_app_do_not_import_web_frameworks_or_web_adapter(self) -> None:
+        forbidden = {
+            "fastapi",
+            "fastapi.responses",
+            "fastapi.staticfiles",
+            "fastapi.templating",
+            "jinja2",
+            "uvicorn",
+            "delibra.web",
+            "delibra.web.app",
+            "delibra.web.paths",
+            "delibra.web.execution_manager",
+        }
+        for directory in (CORE, RUNTIME, APP):
+            for path in directory.glob("*.py"):
+                with self.subTest(path=path):
+                    imports = imported_modules(path)
+
+                    self.assertTrue(forbidden.isdisjoint(imports), imports)
 
     def test_cli_uses_runtime_clock_not_deterministic_test_clock(self) -> None:
         cli_source = (ROOT / "src" / "delibra" / "cli.py").read_text(

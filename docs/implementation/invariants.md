@@ -25,6 +25,9 @@ project-level guardrails behind this implementation checklist.
   - `docs/README.md` or the relevant documentation when the option touches
     runtime behavior;
   - a minimal usage example when it helps prevent hidden or ambiguous behavior.
+- Web UI code is an adapter: FastAPI, Jinja2, templates, static assets, CSRF,
+  and in-memory execution state stay out of `core`, `runtime`, and durable
+  model objects.
 
 Model outputs may vary.
 Runtime derivation must not.

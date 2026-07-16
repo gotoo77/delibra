@@ -176,6 +176,18 @@ class CliSmokeTests(unittest.TestCase):
         self.assertIn("--output", result.stdout)
         self.assertIn("Markdown draft", result.stdout)
 
+    def test_web_help_runs_successfully(self) -> None:
+        result = run_cli("web", "--help")
+
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stderr, "")
+        self.assertIn("usage: delibra web", result.stdout)
+        self.assertIn("--host", result.stdout)
+        self.assertIn("default 127.0.0.1", result.stdout)
+        self.assertIn("--port", result.stdout)
+        self.assertIn("default 8000", result.stdout)
+        self.assertIn("--experiments-root", result.stdout)
+
     def test_validate_requires_protocol_path(self) -> None:
         result = run_cli("validate")
 

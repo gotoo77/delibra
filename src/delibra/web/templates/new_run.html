@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}New Run{% endblock %}
+{% block content %}
+<section>
+  <h1>New run</h1>
+  {% if errors %}
+    <div class="errors" role="alert">
+      {% for error in errors %}
+        <p>{{ error }}</p>
+      {% endfor %}
+    </div>
+  {% endif %}
+  <form method="post" action="{{ url_for('create_run') }}" class="form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+    <label>
+      Preset
+      <select name="preset" required>
+        <option value="">Select a preset</option>
+        {% for preset in presets %}
+          <option value="{{ preset.name }}" {{ 'selected' if form.preset == preset.name else '' }}>
+            {{ preset.name }} - {{ preset.protocol_id }}@{{ preset.version }}
+          </option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>
+      Provider
+      <select name="provider" required>
+        {% for provider in providers %}
+          <option value="{{ provider }}" {{ 'selected' if form.provider == provider else '' }}>{{ provider }}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>
+      Model
+      <input name="model" value="{{ form.model }}" maxlength="120" placeholder="mistral or qwen3:4b">
+    </label>
+
+    <label>
+      Input text
+      <textarea name="input_text" rows="12" maxlength="64000" required>{{ form.input_text }}</textarea>
+    </label>
+
+    <label>
+      Output directory under {{ experiments_root }}
+      <input name="output_dir" value="{{ form.output_dir }}" maxlength="240" required placeholder="local-llm-default/mistral">
+    </label>
+
+    <label class="inline">
+      <input type="checkbox" name="show_progress" {{ 'checked' if form.show_progress else '' }}>
+      Show progress
+    </label>
+
+    <div class="actions">
+      <button class="button primary" type="submit">Run</button>
+      <a class="button" href="{{ url_for('home') }}">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

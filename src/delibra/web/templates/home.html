@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Delibra Local{% endblock %}
+{% block content %}
+<section class="intro">
+  <p class="eyebrow">Local web UI</p>
+  <h1>Delibra</h1>
+  <p>an artifact-first derivation runtime with durable provenance</p>
+  <div class="actions">
+    <a class="button primary" href="{{ url_for('new_run') }}">New run</a>
+    <a class="button" href="{{ url_for('runs') }}">Runs</a>
+  </div>
+</section>
+
+<section>
+  <h2>Providers</h2>
+  <div class="status-list">
+    {% for status in diagnostics.statuses %}
+      <article class="status-item">
+        <div>
+          <strong>{{ status.label }}</strong>
+          <span>{{ status.base_url }}</span>
+        </div>
+        <span class="badge {{ 'ok' if status.reachable else 'warn' }}">
+          {{ 'reachable' if status.reachable else 'not reachable' }}
+        </span>
+        {% if status.models %}
+          <p>Models: {{ status.models | join(', ') }}</p>
+        {% elif status.reachable %}
+          <p>No models reported.</p>
+        {% endif %}
+        {% if status.error %}
+          <p class="muted">Error: {{ status.error }}</p>
+        {% endif %}
+        {% if status.recovery_hint %}
+          <p class="muted">{{ status.recovery_hint }}</p>
+        {% endif %}
+      </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

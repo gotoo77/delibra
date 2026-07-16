@@ -15,6 +15,8 @@ ProviderId = Literal["mock", "openai", "ollama"]
 @dataclass(frozen=True)
 class ProviderConfig:
     id: ProviderId = "mock"
+    model: str | None = None
+    base_url: str | None = None
 
 
 @dataclass(frozen=True)

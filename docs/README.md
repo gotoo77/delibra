@@ -11,6 +11,7 @@
 - [Measurement Notes](measurement-notes.md)
 - [Local Runtime Experience Design Review](design-reviews/local-runtime-experience.md)
 - [Delibra Observatory Design Review](design-reviews/delibra-observatory.md)
+- [Delibra Local Web UI Design Review](design-reviews/delibra-local-web-ui.md)
 
 ## Experimental Observatory Helper
 

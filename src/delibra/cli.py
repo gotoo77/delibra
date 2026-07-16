@@ -25,6 +25,7 @@ from delibra.app.local_runtime import (
     LocalRuntimeIntent,
     assess_local_runtime,
 )
+from delibra.app.models import ProviderConfig
 from delibra.app.observatory import (
     ObservatoryError,
     RunTraceFiles,
@@ -34,13 +35,12 @@ from delibra.app.observatory import (
 )
 from delibra.app.output_paths import (
     RunOutputPathError,
-    RunOutputPaths,
     prepare_run_output_paths,
     resolve_run_output_paths,
 )
-from delibra.app.providers import build_llm_client
 from delibra.app.presets import PresetError, PresetInfo, list_presets, load_preset
-from delibra.app.storage import load_run_json, load_trace_json, write_run_outputs
+from delibra.app.run import RunProtocolApplicationRequest, run_protocol_application
+from delibra.app.storage import load_run_json, load_trace_json
 from delibra.policy_loader import PolicyLoadError, load_policy_yaml
 from delibra.protocol_loader import ProtocolLoadError, load_protocol_yaml
 from delibra.protocol_validator import ProtocolValidationError, validate_protocol
@@ -52,10 +52,7 @@ from delibra.runtime import (
     OllamaProviderError,
     OpenAIConfigError,
     OpenAIProviderError,
-    SystemClock,
     UnsupportedStepKindError,
-    default_engine_ids,
-    execute_protocol,
 )
 
 
@@ -231,6 +228,29 @@ def build_parser() -> argparse.ArgumentParser:
     )
     presets_list.set_defaults(handler=_presets_list)
 
+    web = subparsers.add_parser(
+        "web",
+        help="run the local web UI",
+        description="Run the local Delibra web UI.",
+    )
+    web.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="host to bind; default 127.0.0.1",
+    )
+    web.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="port to bind; default 8000",
+    )
+    web.add_argument(
+        "--experiments-root",
+        default="experiments",
+        help="authorized root for run outputs and discovery; default experiments",
+    )
+    web.set_defaults(handler=_web)
+
     return parser
 
 
@@ -287,18 +307,19 @@ def _run(args: argparse.Namespace) -> int:
         return 1
 
     try:
-        ids = default_engine_ids()
-        result = execute_protocol(
-            protocol,
-            input_ref,
-            llm=build_llm_client(args.provider),
-            ids=ids,
-            clock=SystemClock(),
-            policy=policy,
-            progress=_build_progress_printer(args.provider) if args.progress else None,
+        run_protocol_application(
+            RunProtocolApplicationRequest(
+                protocol=protocol,
+                input_ref=input_ref,
+                provider=ProviderConfig(args.provider),
+                output_paths=output_paths,
+                policy=policy,
+                progress=_build_progress_printer(args.provider)
+                if args.progress
+                else None,
+            )
         )
     except EngineExecutionError as exc:
-        _write_run_outputs(output_paths, exc.result)
         print(f"delibra run: {exc}", file=sys.stderr)
         return 1
     except (
@@ -314,7 +335,6 @@ def _run(args: argparse.Namespace) -> int:
         print(f"delibra run: {exc}", file=sys.stderr)
         return 1
 
-    _write_run_outputs(output_paths, result)
     if output_paths.uses_output_dir:
         print(f"run_output: {output_paths.run_path}")
         print(f"trace_output: {output_paths.trace_path}")
@@ -414,10 +434,6 @@ def _render_progress_event(event: EngineProgressEvent, provider: str) -> str:
             f"artifacts={event.artifact_count}"
         )
     return f"{prefix} {event.type}"
-
-
-def _write_run_outputs(paths: RunOutputPaths, result) -> None:
-    write_run_outputs(result, run_path=paths.run_path, trace_path=paths.trace_path)
 
 
 def _inspect(args: argparse.Namespace) -> int:
@@ -525,6 +541,21 @@ def _presets_list(_args: argparse.Namespace) -> int:
 
     print(_render_presets_list(presets))
     return 0
+
+
+def _web(args: argparse.Namespace) -> int:
+    from delibra.web.app import main as web_main
+
+    return web_main(
+        [
+            "--host",
+            args.host,
+            "--port",
+            str(args.port),
+            "--experiments-root",
+            args.experiments_root,
+        ]
+    )
 
 
 def _render_inspection(inspection: RunInspection) -> str:

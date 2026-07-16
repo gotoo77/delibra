@@ -17,6 +17,7 @@ delibra --help
 delibra validate --help
 delibra presets list
 delibra run --help
+delibra web --help
 ```
 
 Run with the default mock provider:
@@ -203,6 +204,25 @@ delibra compare-runs \
   --trace experiments/local-llm-default/mistral/trace.json \
   --output comparison.md
 ```
+
+Run the local web UI:
+
+```bash
+python3 -m delibra web \
+  --host 127.0.0.1 \
+  --port 8000 \
+  --experiments-root experiments
+```
+
+The web UI is a local adapter over the same application capabilities used by
+the CLI. It binds to `127.0.0.1` by default, writes only below the configured
+experiments root, uses an in-memory execution id for active runs, and discovers
+completed runs from persisted `run.json` / `trace.json` pairs. Active web
+executions are not resumed after a server restart; completed runs remain
+available from their durable files. When the web form supplies a provider
+model, that per-run value takes priority over `OPENAI_MODEL` or `OLLAMA_MODEL`
+without mutating the process environment. Secrets such as `OPENAI_API_KEY`
+remain environment configuration and are not displayed by the UI.
 
 `compare-runs` is an experimental Delibra Observatory helper. It consumes
 persisted `run.json` / `trace.json` pairs, aligns artifacts by protocol position

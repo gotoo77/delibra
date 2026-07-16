@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Runs{% endblock %}
+{% block content %}
+<section>
+  <h1>Runs</h1>
+  <p class="muted">Discovered below {{ experiments_root }}.</p>
+  <div class="run-list">
+    {% for item in runs %}
+      <article class="run-item">
+        <div>
+          <h2>{{ item.label }}</h2>
+          {% if item.valid %}
+            <p>{{ item.run.protocol.id }}@{{ item.run.protocol.version }} - {{ item.run.status.value }} - {{ item.run.artifacts | length }} artifacts</p>
+          {% else %}
+            <p class="muted">{{ item.diagnostic }}</p>
+          {% endif %}
+        </div>
+        {% if item.valid %}
+          <a class="button" href="{{ url_for('run_detail', run_key=item.key) }}">Open</a>
+        {% endif %}
+      </article>
+    {% else %}
+      <p>No persisted runs found.</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

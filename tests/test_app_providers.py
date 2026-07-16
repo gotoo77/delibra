@@ -8,7 +8,9 @@ from delibra.app.models import ProviderConfig
 from delibra.app.providers import build_llm_client
 from delibra.runtime import (
     MockLLMClient,
+    OllamaClient,
     OllamaConfigError,
+    OpenAIClient,
     OpenAIConfigError,
 )
 
@@ -37,6 +39,29 @@ class AppProviderTests(unittest.TestCase):
     def test_unsupported_provider_fails_cleanly(self) -> None:
         with self.assertRaisesRegex(ValueError, "unsupported provider: other"):
             build_llm_client("other")  # type: ignore[arg-type]
+
+    def test_explicit_ollama_model_does_not_mutate_environment(self) -> None:
+        with mock.patch.dict(os.environ, {"OLLAMA_MODEL": "env-model"}, clear=True):
+            client = build_llm_client(ProviderConfig("ollama", model="form-model"))
+            self.assertEqual(os.environ["OLLAMA_MODEL"], "env-model")
+
+        self.assertIsInstance(client, OllamaClient)
+        self.assertEqual(client.config.model, "form-model")
+
+    def test_explicit_openai_model_overlays_environment(self) -> None:
+        with mock.patch.dict(
+            os.environ,
+            {
+                "OPENAI_API_KEY": "key",
+                "OPENAI_MODEL": "env-model",
+            },
+            clear=True,
+        ):
+            client = build_llm_client(ProviderConfig("openai", model="form-model"))
+
+        self.assertIsInstance(client, OpenAIClient)
+        self.assertEqual(client.config.model, "form-model")
+        self.assertEqual(client.config.api_key, "key")
 
 
 if __name__ == "__main__":
