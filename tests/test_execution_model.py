@@ -63,6 +63,10 @@ RUN_JSON = {
         "source": "pr.diff",
         "hash": "sha256:abc123",
     },
+    "language": {
+        "requested": "auto",
+        "resolved": "en",
+    },
     "artifacts": [ARTIFACT_JSON],
     "trace_id": "trace_0001",
     "started_at": "2026-07-07T10:00:00Z",
@@ -215,6 +219,10 @@ class DurableExecutionModelTests(unittest.TestCase):
                 "source": "pr.diff",
                 "hash": "sha256:abc123",
             },
+            language={
+                "requested": "auto",
+                "resolved": "en",
+            },
             artifacts=(Artifact.from_json(ARTIFACT_JSON),),
             trace_id="trace_0001",
             started_at="2026-07-07T10:00:00Z",
@@ -228,6 +236,14 @@ class DurableExecutionModelTests(unittest.TestCase):
 
         self.assertEqual(run.status, RunStatus.COMPLETED)
         self.assertEqual(run.to_json(), RUN_JSON)
+
+    def test_run_deserializes_legacy_json_without_language_as_not_recorded(self) -> None:
+        run_json = {key: value for key, value in RUN_JSON.items() if key != "language"}
+
+        run = Run.from_json(run_json)
+
+        self.assertIsNone(run.language)
+        self.assertNotIn("language", run.to_json())
 
     def test_run_input_preserves_nested_json_arrays(self) -> None:
         run_json = {

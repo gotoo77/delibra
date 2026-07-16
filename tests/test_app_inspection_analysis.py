@@ -24,6 +24,8 @@ class AppInspectionAnalysisTests(unittest.TestCase):
             self.assertEqual(inspection.status, "completed")
             self.assertEqual(inspection.protocol_id, "code_review")
             self.assertEqual(inspection.protocol_version, "0.1.0")
+            self.assertEqual(inspection.requested_language, "auto")
+            self.assertEqual(inspection.resolved_language, "en")
             self.assertEqual(inspection.artifact_count, 7)
             self.assertGreater(inspection.trace_event_count or 0, 0)
             self.assertIn(
@@ -93,6 +95,20 @@ class AppInspectionAnalysisTests(unittest.TestCase):
 
             self.assertIsNone(inspection.trace_event_count)
             self.assertIsNone(analysis.trace_event_count)
+
+    def test_inspect_run_reports_legacy_missing_language_as_not_recorded(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            run_path, _ = create_run_and_trace(tmp)
+            run = load_run_json(Path(run_path))
+            legacy_json = run.to_json()
+            legacy_json.pop("language")
+            legacy = type(run).from_json(legacy_json)
+
+            inspection = inspect_run(legacy)
+
+            self.assertIsNone(inspection.requested_language)
+            self.assertIsNone(inspection.resolved_language)
+            self.assertIn("language: not recorded", _render_inspection(inspection))
 
     def test_cli_inspect_output_matches_structured_rendering(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

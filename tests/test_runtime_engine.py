@@ -141,6 +141,7 @@ class RuntimeEngineTests(unittest.TestCase):
         result = execute_fixture()
 
         self.assertEqual(result.run.status, RunStatus.COMPLETED)
+        self.assertEqual(result.run.language, {"requested": "auto", "resolved": "en"})
         self.assertEqual(len(result.run.artifacts), 2)
         self.assertEqual(result.run.artifacts[0].producer_step_id, "frame")
         self.assertEqual(result.run.artifacts[0].output, "framing")
@@ -587,6 +588,102 @@ class RuntimeEngineTests(unittest.TestCase):
         self.assertEqual(
             [request.inputs["artifact_ids"] for request in criticize_requests],
             [["artifact_0002", "artifact_0003"], ["artifact_0002", "artifact_0003"]],
+        )
+
+    def test_language_is_persisted_as_requested_and_resolved_values(self) -> None:
+        protocol = load_protocol_yaml(FIXTURE)
+
+        french_result = execute_protocol(
+            protocol,
+            {"kind": "text", "content": "Merci de relire cette decision importante."},
+            llm=MockLLMClient(IdSequence("msg_response")),
+            ids=default_engine_ids(),
+            clock=deterministic_clock(),
+            language="auto",
+        )
+        english_result = execute_protocol(
+            protocol,
+            {"kind": "text", "content": "Hello, can you review this design?"},
+            llm=MockLLMClient(IdSequence("msg_response")),
+            ids=default_engine_ids(),
+            clock=deterministic_clock(),
+            language="auto",
+        )
+
+        self.assertEqual(french_result.run.to_json()["language"], {"requested": "auto", "resolved": "fr"})
+        self.assertEqual(english_result.run.to_json()["language"], {"requested": "auto", "resolved": "en"})
+
+    def test_language_instruction_is_injected_for_all_llm_step_kinds(self) -> None:
+        protocol = make_criticize_protocol()
+        original_protocol_json = protocol.to_json()
+        llm = RecordingLLMClient()
+        instruction = "Produce all generated artifact content in French."
+
+        result = execute_protocol(
+            protocol,
+            {"kind": "text", "content": "Merci de relire cette decision importante."},
+            llm=llm,
+            ids=default_engine_ids(),
+            clock=deterministic_clock(),
+            language="fr",
+        )
+
+        self.assertEqual(result.run.status, RunStatus.COMPLETED)
+        self.assertEqual(
+            [(request.step_id, request.role_id) for request in llm.requests],
+            [
+                ("frame", "framer"),
+                ("reviews", "maintainer"),
+                ("reviews", "tester"),
+                ("critiques", "critic"),
+                ("critiques", "tester"),
+                ("final", "synthesizer"),
+            ],
+        )
+        for request in llm.requests:
+            role = protocol.roles[request.role_id]
+            step = next(step for step in protocol.steps if step.id == request.step_id)
+            self.assertEqual(request.message.content.count(instruction), 1)
+            self.assertLess(
+                request.message.content.index(instruction),
+                request.message.content.index(role.instruction),
+            )
+            self.assertLess(
+                request.message.content.index(instruction),
+                request.message.content.index(step.instruction),
+            )
+        self.assertEqual(
+            {request.message.content.splitlines()[2] for request in llm.requests},
+            {instruction},
+        )
+        self.assertNotIn(instruction, json.dumps(result.trace.to_json()))
+        self.assertEqual(protocol.to_json(), original_protocol_json)
+
+    def test_language_instruction_does_not_modify_structural_artifact_fields(self) -> None:
+        protocol = make_criticize_protocol()
+
+        result = execute_protocol(
+            protocol,
+            {"kind": "text", "content": "Review this decision."},
+            llm=MockLLMClient(IdSequence("msg_response")),
+            ids=default_engine_ids(),
+            clock=deterministic_clock(),
+            language="fr",
+        )
+
+        self.assertEqual(
+            [
+                (artifact.output, artifact.kind, artifact.producer_step_id, artifact.producer_role_id)
+                for artifact in result.run.artifacts
+            ],
+            [
+                ("framing", "framing", "frame", "framer"),
+                ("reviews", "review", "reviews", "maintainer"),
+                ("reviews", "review", "reviews", "tester"),
+                ("critiques", "critique", "critiques", "critic"),
+                ("critiques", "critique", "critiques", "tester"),
+                ("final_synthesis", "synthesis", "final", "synthesizer"),
+            ],
         )
 
     def test_failed_execution_preserves_partial_run_and_trace(self) -> None:

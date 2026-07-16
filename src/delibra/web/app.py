@@ -27,6 +27,7 @@ from delibra.app.run_config import (
     describe_presets,
     describe_provider_options,
 )
+from delibra.runtime import SUPPORTED_REQUESTED_LANGUAGE_VALUES
 from delibra.web.execution_manager import ExecutionLimitError, ExecutionManager, WebExecution
 from delibra.web.paths import (
     WebPathError,
@@ -45,6 +46,15 @@ DEFAULT_PORT = 8000
 DEFAULT_EXPERIMENTS_ROOT = "experiments"
 MAX_FORM_BYTES = 128_000
 CSRF_COOKIE = "delibra_csrf"
+LANGUAGE_LABELS = {
+    "auto": "Auto - detect from input",
+    "fr": "Fran&ccedil;ais",
+    "en": "English",
+}
+LANGUAGE_OPTIONS = tuple(
+    {"value": value, "label": LANGUAGE_LABELS[value]}
+    for value in SUPPORTED_REQUESTED_LANGUAGE_VALUES
+)
 
 
 @dataclass(frozen=True)
@@ -265,10 +275,12 @@ def _new_run_context(
         "presets": presets,
         "preset_details": describe_presets(presets),
         "provider_options": provider_options,
+        "language_options": LANGUAGE_OPTIONS,
         "form": form or {
             "preset": "",
             "provider": "mock",
             "model": "",
+            "language": "auto",
             "input_text": "",
             "output_dir": "",
             "show_progress": "on",
@@ -322,12 +334,14 @@ def _build_run_request(root: Path, form: dict[str, str]) -> RunProtocolApplicati
 
     protocol = load_preset(preset_name)
     output_paths = resolve_web_output_paths(root, form.get("output_dir", ""))
+    language = _language_from_form(form)
     return RunProtocolApplicationRequest(
         protocol=protocol,
         input_ref=input_from_text(input_text),
         provider=provider,
         output_paths=output_paths,
         policy=None,
+        language=language,
         progress=None,
     )
 
@@ -345,6 +359,13 @@ def _provider_from_form(form: dict[str, str]) -> ProviderConfig:
         id=provider,  # type: ignore[arg-type]
         model=None if model == "" else model,
     )
+
+
+def _language_from_form(form: dict[str, str]) -> str:
+    language = form.get("language", "auto").strip()
+    if language not in SUPPORTED_REQUESTED_LANGUAGE_VALUES:
+        raise ValueError(f"unsupported language: {language}")
+    return language
 
 
 async def _event_stream(manager: ExecutionManager, execution_id: str):

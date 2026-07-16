@@ -128,6 +128,7 @@ class ExecutionManager:
             provider=execution.request.provider,
             output_paths=execution.request.output_paths,
             policy=execution.request.policy,
+            language=execution.request.language,
             progress=progress if execution.show_progress else None,
         )
         try:

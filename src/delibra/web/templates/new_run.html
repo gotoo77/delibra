@@ -167,6 +167,15 @@
     </label>
 
     <label>
+      Language
+      <select name="language" required>
+        {% for language in language_options %}
+          <option value="{{ language.value }}" {{ 'selected' if form.language == language.value else '' }}>{{ language.label | safe }}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>
       Input text
       <textarea name="input_text" rows="12" maxlength="64000" required>{{ form.input_text }}</textarea>
     </label>

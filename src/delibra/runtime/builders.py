@@ -16,6 +16,7 @@ from delibra.core import (
     TraceEventType,
 )
 from delibra.core.json import JsonMutableObject
+from delibra.runtime.language import RunLanguage
 
 
 TERMINAL_STATUSES = {
@@ -82,7 +83,10 @@ def create_run(
     run_ids: IdSequence,
     trace_ids: IdSequence,
     clock: Clock,
+    language: RunLanguage | None = None,
 ) -> Run:
+    if language is None:
+        language = RunLanguage.resolve("auto", input_ref)
     return Run(
         id=run_ids.next(),
         protocol={
@@ -91,6 +95,7 @@ def create_run(
         },
         status=RunStatus.CREATED,
         input=input_ref,
+        language=language.to_json(),
         artifacts=(),
         trace_id=trace_ids.next(),
         started_at=clock.now(),

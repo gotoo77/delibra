@@ -131,6 +131,9 @@ class CliSmokeTests(unittest.TestCase):
         self.assertIn("--provider", result.stdout)
         self.assertIn("{mock,openai,ollama}", result.stdout)
         self.assertIn("provider: mock, openai, ollama; default mock", result.stdout)
+        self.assertIn("--language", result.stdout)
+        self.assertIn("{auto,fr,en}", result.stdout)
+        self.assertIn("language for generated artifact content", result.stdout)
         self.assertIn("--progress", result.stdout)
         self.assertIn("--policy", result.stdout)
         self.assertIn("path to an execution policy YAML file", result.stdout)
@@ -266,6 +269,48 @@ class CliSmokeTests(unittest.TestCase):
             self.assertEqual(result.stderr, "")
             self.assertTrue(run_output.exists())
             self.assertTrue(trace_output.exists())
+
+    def test_run_accepts_language_option_and_persists_resolution(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            run_output = Path(tmp) / "run.json"
+            trace_output = Path(tmp) / "trace.json"
+
+            result = run_cli(
+                "run",
+                "--protocol",
+                str(ROOT / "tests" / "fixtures" / "prompt_synthesize_protocol.yaml"),
+                "--input-text",
+                "Review this change.",
+                "--language",
+                "fr",
+                "--run-output",
+                str(run_output),
+                "--trace-output",
+                str(trace_output),
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            run_json = json.loads(run_output.read_text(encoding="utf-8"))
+            self.assertEqual(run_json["language"], {"requested": "fr", "resolved": "fr"})
+
+    def test_run_rejects_invalid_language_option(self) -> None:
+        result = run_cli(
+            "run",
+            "--protocol",
+            str(ROOT / "tests" / "fixtures" / "prompt_synthesize_protocol.yaml"),
+            "--input-text",
+            "Review this change.",
+            "--language",
+            "de",
+            "--run-output",
+            "run.json",
+            "--trace-output",
+            "trace.json",
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("invalid choice: 'de'", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
 
     def test_run_requires_outputs_without_output_dir(self) -> None:
         result = run_cli(

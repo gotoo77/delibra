@@ -31,6 +31,8 @@ class RunInspection:
     status: str
     protocol_id: str
     protocol_version: str
+    requested_language: str | None
+    resolved_language: str | None
     artifact_count: int
     artifacts: tuple[ArtifactInspection, ...]
     trace_event_count: int | None
@@ -42,6 +44,8 @@ def inspect_run(run: Run, trace: Trace | None = None) -> RunInspection:
         status=run.status.value,
         protocol_id=str(run.protocol["id"]),
         protocol_version=str(run.protocol["version"]),
+        requested_language=None if run.language is None else str(run.language["requested"]),
+        resolved_language=None if run.language is None else str(run.language["resolved"]),
         artifact_count=len(run.artifacts),
         artifacts=tuple(
             ArtifactInspection(

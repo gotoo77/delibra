@@ -46,6 +46,32 @@ delibra run \
 from the local `presets/` directory. Use `delibra presets list` to discover
 available local presets.
 
+Choose the language for generated artifact content with `--language auto`,
+`--language fr`, or `--language en`:
+
+```bash
+delibra run \
+  --preset decision_review \
+  --provider mock \
+  --language auto \
+  --input-text "Faut-il publier cette decision maintenant ?" \
+  --run-output run.json \
+  --trace-output trace.json
+```
+
+`auto` detects French or English from the main run input with a local
+deterministic heuristic. It is not a universal language detector. Very short,
+code-heavy, ambiguous, mostly technical, or unsupported inputs use the documented
+fallback to English. Delibra persists both the requested value and the resolved
+value in new `run.json` files, for example `requested=auto` and `resolved=fr`.
+Historical runs created before this field existed may have no recorded language;
+inspection displays that as not recorded rather than reconstructing one.
+The language constraint is injected into provider calls for generated artifact
+content only; protocol ids, step ids, role ids, output ids, artifact kinds, and
+other structural metadata are not translated. In this tranche the constraint is
+integrated into Delibra's single provider message because `LLMRequest` does not
+yet model separate system and user messages.
+
 Group run outputs in a directory:
 
 ```bash
@@ -222,7 +248,9 @@ executions are not resumed after a server restart; completed runs remain
 available from their durable files. When the web form supplies a provider
 model, that per-run value takes priority over `OPENAI_MODEL` or `OLLAMA_MODEL`
 without mutating the process environment. Secrets such as `OPENAI_API_KEY`
-remain environment configuration and are not displayed by the UI.
+remain environment configuration and are not displayed by the UI. The new-run
+form exposes the same run language choices as the CLI and the run detail page
+shows the resolved language.
 
 `compare-runs` is an experimental Delibra Observatory helper. It consumes
 persisted `run.json` / `trace.json` pairs, aligns artifacts by protocol position

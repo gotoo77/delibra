@@ -2,10 +2,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Protocol as TypingProtocol
+from typing import TYPE_CHECKING
 
 from delibra.core import Role, StepDefinition
 from delibra.core.json import JsonMutableObject
-from delibra.runtime.builders import IdSequence
+from delibra.runtime.language import ResolvedLanguage, language_instruction
+
+if TYPE_CHECKING:
+    from delibra.runtime.builders import IdSequence
 
 
 @dataclass(frozen=True)
@@ -71,12 +75,17 @@ def create_llm_request(
     *,
     message_ids: IdSequence,
     inputs: JsonMutableObject,
+    resolved_language: ResolvedLanguage | str | None = None,
 ) -> LLMRequest:
     return LLMRequest(
         message=Message(
             id=message_ids.next(),
             role="user",
-            content=_render_request_content(step, role),
+            content=_render_request_content(
+                step,
+                role,
+                resolved_language=resolved_language,
+            ),
         ),
         step_id=step.id,
         role_id=role.id,
@@ -84,12 +93,22 @@ def create_llm_request(
     )
 
 
-def _render_request_content(step: StepDefinition, role: Role) -> str:
-    return "\n".join(
+def _render_request_content(
+    step: StepDefinition,
+    role: Role,
+    *,
+    resolved_language: ResolvedLanguage | str | None,
+) -> str:
+    parts = [
+        f"role:{role.id}",
+        f"step:{step.id}",
+    ]
+    if resolved_language is not None:
+        parts.append(language_instruction(resolved_language))
+    parts.extend(
         (
-            f"role:{role.id}",
-            f"step:{step.id}",
             role.instruction,
             step.instruction,
         )
     )
+    return "\n".join(parts)

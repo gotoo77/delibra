@@ -9,6 +9,11 @@
     <div><dt>Duration</dt><dd>{{ analysis.duration_seconds if analysis.duration_seconds is not none else 'unknown' }}</dd></div>
     <div><dt>Artifacts</dt><dd>{{ persisted.run.artifacts | length }}</dd></div>
     <div><dt>Trace events</dt><dd>{{ analysis.trace_event_count }}</dd></div>
+    {% if persisted.run.language %}
+      <div><dt>Language</dt><dd>{{ persisted.run.language.resolved }} <span class="muted">(requested {{ persisted.run.language.requested }})</span></dd></div>
+    {% else %}
+      <div><dt>Language</dt><dd>not recorded</dd></div>
+    {% endif %}
   </dl>
   <p class="muted">run.json: {{ persisted.run_label }}</p>
   <p class="muted">trace.json: {{ persisted.trace_label }}</p>

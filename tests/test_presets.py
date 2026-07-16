@@ -107,6 +107,7 @@ class PresetTests(unittest.TestCase):
             "protocol",
             "status",
             "input",
+            "language",
             "artifacts",
             "trace_id",
             "started_at",
@@ -129,6 +130,7 @@ class PresetTests(unittest.TestCase):
 
                 self.assertEqual(set(run_json), expected_run_fields)
                 self.assertEqual(run_json["status"], "completed")
+                self.assertEqual(set(run_json["language"]), {"requested", "resolved"})
                 self.assertGreaterEqual(len(run_json["artifacts"]), 1)
                 for artifact in run_json["artifacts"]:
                     self.assertEqual(set(artifact), expected_artifact_fields)

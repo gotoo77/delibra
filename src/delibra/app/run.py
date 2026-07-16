@@ -22,6 +22,7 @@ from delibra.runtime import (
     default_engine_ids,
     execute_protocol,
 )
+from delibra.runtime.language import RequestedLanguage
 from delibra.runtime.policy import ExecutionPolicy
 
 
@@ -32,6 +33,7 @@ class RunProtocolApplicationRequest:
     provider: ProviderConfig
     output_paths: RunOutputPaths
     policy: ExecutionPolicy | None = None
+    language: RequestedLanguage | str = RequestedLanguage.AUTO
     progress: ProgressCallback | None = None
 
 
@@ -69,6 +71,7 @@ def _execute(request: RunProtocolApplicationRequest) -> EngineResult:
             ids=default_engine_ids(),
             clock=SystemClock(),
             policy=request.policy,
+            language=request.language,
             progress=request.progress,
         )
     except EngineExecutionError as exc:

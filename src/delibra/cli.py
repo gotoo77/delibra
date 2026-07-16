@@ -52,6 +52,7 @@ from delibra.runtime import (
     OllamaProviderError,
     OpenAIConfigError,
     OpenAIProviderError,
+    SUPPORTED_REQUESTED_LANGUAGE_VALUES,
     UnsupportedStepKindError,
 )
 
@@ -107,6 +108,15 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument(
         "--policy",
         help="path to an execution policy YAML file",
+    )
+    run.add_argument(
+        "--language",
+        choices=SUPPORTED_REQUESTED_LANGUAGE_VALUES,
+        default="auto",
+        help=(
+            "language for generated artifact content: auto, fr, en; "
+            "default auto"
+        ),
     )
     run.add_argument(
         "--run-output",
@@ -314,6 +324,7 @@ def _run(args: argparse.Namespace) -> int:
                 provider=ProviderConfig(args.provider),
                 output_paths=output_paths,
                 policy=policy,
+                language=args.language,
                 progress=_build_progress_printer(args.provider)
                 if args.progress
                 else None,
@@ -564,6 +575,9 @@ def _render_inspection(inspection: RunInspection) -> str:
         f"status: {inspection.status}",
         f"protocol: {inspection.protocol_id}@{inspection.protocol_version}",
         f"artifacts: {inspection.artifact_count}",
+        "language: not recorded"
+        if inspection.requested_language is None or inspection.resolved_language is None
+        else f"language: requested={inspection.requested_language} resolved={inspection.resolved_language}",
         "artifact_summary:",
     ]
     for artifact in inspection.artifacts:

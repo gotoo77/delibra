@@ -21,6 +21,7 @@ from delibra.app.local_runtime import LocalRuntimeAssessment
 from delibra.app.models import ProviderConfig
 from delibra.app.presets import load_preset
 from delibra.app.run import RunProtocolApplicationRequest
+from delibra.runtime import SUPPORTED_REQUESTED_LANGUAGE_VALUES
 from tests.test_inspect import create_run_and_trace
 
 
@@ -93,6 +94,13 @@ class WebAppTests(unittest.TestCase):
         self.assertIn('data-model-field', response.text)
         self.assertIn('data-model-required-marker', response.text)
         self.assertIn("required</span>", response.text)
+        self.assertIn('name="language"', response.text)
+        self.assertIn('value="auto"', response.text)
+        self.assertIn("Auto - detect from input", response.text)
+        self.assertIn("Fran&ccedil;ais", response.text)
+        self.assertIn("English", response.text)
+        for language in SUPPORTED_REQUESTED_LANGUAGE_VALUES:
+            self.assertIn(f'value="{language}"', response.text)
         self.assertIn("Preset details", response.text)
         self.assertIn("Overview", response.text)
         self.assertIn("Raw YAML", response.text)
@@ -133,6 +141,8 @@ class WebAppTests(unittest.TestCase):
             detail = restarted.get("/runs/web/mock")
             self.assertEqual(detail.status_code, 200)
             self.assertIn("code_review@0.1.0", detail.text)
+            self.assertIn("<dt>Language</dt>", detail.text)
+            self.assertIn("requested auto", detail.text)
             self.assertIn("Raw payload JSON", detail.text)
 
     def test_completed_execution_page_does_not_reopen_progress_stream(self) -> None:
@@ -183,6 +193,51 @@ class WebAppTests(unittest.TestCase):
                 len(stream.text),
             )
 
+
+    def test_post_preserves_submitted_language_in_run_request(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            client = TestClient(create_app(experiments_root=Path(tmp) / "experiments"))
+            captured = []
+
+            def fake_run(request):
+                captured.append(request)
+                raise RuntimeError("stop after request capture")
+
+            with mock.patch("delibra.web.execution_manager.run_protocol_application", fake_run):
+                response = self._post_run(
+                    client,
+                    {
+                        "preset": "code_review",
+                        "provider": "mock",
+                        "language": "fr",
+                        "input_text": "Merci de relire cette decision.",
+                        "output_dir": "language/fr",
+                    },
+                )
+                self.assertEqual(response.status_code, 303)
+                self._wait_for_execution(client.app.state.manager, response.headers["location"])
+
+            self.assertEqual(len(captured), 1)
+            self.assertEqual(captured[0].language, "fr")
+
+    def test_invalid_language_returns_inline_validation_and_preserves_values(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            client = TestClient(create_app(experiments_root=Path(tmp) / "experiments"))
+            response = self._post_run(
+                client,
+                {
+                    "preset": "code_review",
+                    "provider": "mock",
+                    "language": "de",
+                    "input_text": "Review this change.",
+                    "output_dir": "language/invalid",
+                },
+            )
+
+            self.assertEqual(response.status_code, 400)
+            self.assertIn("unsupported language: de", response.text)
+            self.assertIn("Review this change.", response.text)
+
     def test_payload_content_is_rendered_as_readable_text_before_raw_json(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "experiments"
@@ -208,6 +263,25 @@ class WebAppTests(unittest.TestCase):
             self.assertIn("<dt>confidence</dt>", response.text)
             self.assertIn("0.82", response.text)
             self.assertIn("<dt>notes</dt>", response.text)
+
+
+    def test_legacy_run_without_language_renders_not_recorded(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "experiments"
+            directory = root / "legacy"
+            directory.mkdir(parents=True)
+            run_path, _ = create_run_and_trace(directory)
+            run = json.loads(run_path.read_text(encoding="utf-8"))
+            run.pop("language")
+            run_path.write_text(json.dumps(run), encoding="utf-8")
+
+            client = TestClient(create_app(experiments_root=root))
+            response = client.get("/runs/legacy")
+
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("<dt>Language</dt>", response.text)
+            self.assertIn("not recorded", response.text)
+            self.assertNotIn("requested auto", response.text)
 
     def test_invalid_csrf_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

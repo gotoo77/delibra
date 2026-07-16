@@ -188,6 +188,7 @@ id
 protocol
 status
 input
+language
 artifacts
 trace_id
 started_at
@@ -195,6 +196,14 @@ completed_at
 ```
 
 `completed_at` is optional because a run may still be running.
+`language` records the requested run language (`auto`, `fr`, or `en`) and the
+resolved language (`fr` or `en`) used for generated artifact content. New runs
+record this field. Historical runs created before language tracking may omit it,
+and that absence means the language was not recorded. It does not translate
+protocol ids, step ids, role ids, outputs, artifact kinds, or other structural
+metadata. The current runtime injects the language constraint into its single
+provider message; `LLMRequest` does not yet model distinct system and user
+messages.
 
 ### Artifact
 
@@ -425,6 +434,10 @@ Canonical `Run` JSON:
     "source": "pr.diff",
     "hash": "sha256:abc123"
   },
+  "language": {
+    "requested": "auto",
+    "resolved": "en"
+  },
   "artifacts": [],
   "trace_id": "trace_0001",
   "started_at": "2026-07-07T10:00:00Z",
@@ -583,6 +596,10 @@ steps:
     "kind": "file",
     "source": "pr.diff",
     "hash": "sha256:abc123"
+  },
+  "language": {
+    "requested": "auto",
+    "resolved": "en"
   },
   "artifacts": [
     {
@@ -897,6 +914,10 @@ steps:
     "kind": "file",
     "source": "pr.diff",
     "hash": "sha256:def456"
+  },
+  "language": {
+    "requested": "fr",
+    "resolved": "fr"
   },
   "artifacts": [
     {

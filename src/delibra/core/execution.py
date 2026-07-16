@@ -201,6 +201,7 @@ class Run:
     protocol: JsonMutableObject | JsonFrozenObject
     status: RunStatus
     input: JsonMutableObject | JsonFrozenObject
+    language: JsonMutableObject | JsonFrozenObject | None
     artifacts: tuple[Artifact, ...]
     trace_id: str
     started_at: str
@@ -210,14 +211,18 @@ class Run:
         object.__setattr__(self, "status", _coerce_run_status(self.status))
         _require_protocol_ref(self.protocol)
         _require_json_object("input", self.input)
+        if self.language is not None:
+            _require_language_ref(self.language)
         object.__setattr__(self, "protocol", _freeze_json_object(self.protocol))
         object.__setattr__(self, "input", _freeze_json_object(self.input))
+        if self.language is not None:
+            object.__setattr__(self, "language", _freeze_json_object(self.language))
         artifacts = tuple(self.artifacts)
         _require_unique_values("Run.artifacts.id", (artifact.id for artifact in artifacts))
         object.__setattr__(self, "artifacts", artifacts)
 
     def to_json(self) -> JsonMutableObject:
-        return {
+        data: JsonMutableObject = {
             "id": self.id,
             "protocol": _thaw_json_object(self.protocol),
             "status": self.status.value,
@@ -227,6 +232,9 @@ class Run:
             "started_at": self.started_at,
             "completed_at": self.completed_at,
         }
+        if self.language is not None:
+            data["language"] = _thaw_json_object(self.language)
+        return data
 
     @classmethod
     def from_json(cls, data: JsonMutableObject) -> "Run":
@@ -243,7 +251,9 @@ class Run:
                 "started_at",
                 "completed_at",
             },
+            optional={"language"},
         )
+        language = data.get("language")
         artifacts = data["artifacts"]
         if not isinstance(artifacts, list):
             raise TypeError("artifacts must be a JSON array")
@@ -255,6 +265,7 @@ class Run:
             protocol=_require_json_object("protocol", data["protocol"]),
             status=RunStatus.parse(_require_string("status", data["status"])),
             input=_require_json_object("input", data["input"]),
+            language=None if language is None else _require_json_object("language", language),
             artifacts=tuple(Artifact.from_json(artifact) for artifact in artifacts),
             trace_id=_require_string("trace_id", data["trace_id"]),
             started_at=_require_string("started_at", data["started_at"]),
@@ -274,11 +285,18 @@ def _coerce_trace_event_type(value: TraceEventType | str) -> TraceEventType:
     return TraceEventType.parse(value)
 
 
-def _require_fields(name: str, data: JsonMutableObject, expected: set[str]) -> None:
+def _require_fields(
+    name: str,
+    data: JsonMutableObject,
+    expected: set[str],
+    *,
+    optional: set[str] | None = None,
+) -> None:
     _require_json_object(name, data)
+    optional = set() if optional is None else optional
     actual = set(data)
     missing = expected - actual
-    unknown = actual - expected
+    unknown = actual - expected - optional
     if missing:
         raise ValueError(f"{name} missing fields: {', '.join(sorted(missing))}")
     if unknown:
@@ -296,6 +314,18 @@ def _require_protocol_ref(value: Any) -> JsonMutableObject | JsonFrozenObject:
     _require_fields("protocol", data, {"id", "version"})
     _require_string("protocol.id", data["id"])
     _require_string("protocol.version", data["version"])
+    return data
+
+
+def _require_language_ref(value: Any) -> JsonMutableObject | JsonFrozenObject:
+    data = _require_json_object("language", value)
+    _require_fields("language", data, {"requested", "resolved"})
+    requested = _require_string("language.requested", data["requested"])
+    resolved = _require_string("language.resolved", data["resolved"])
+    if requested not in {"auto", "fr", "en"}:
+        raise ValueError(f"unsupported language: {requested}")
+    if resolved not in {"fr", "en"}:
+        raise ValueError(f"unsupported resolved language: {resolved}")
     return data
 
 

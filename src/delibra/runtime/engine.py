@@ -30,6 +30,7 @@ from delibra.runtime.builders import (
 )
 from delibra.runtime.context import ExecutionContext
 from delibra.runtime.llm import LLMClient, LLMRequest, create_llm_request
+from delibra.runtime.language import RequestedLanguage, RunLanguage
 from delibra.runtime.policy import (
     ExecutionPolicy,
     PolicyDecision,
@@ -111,10 +112,12 @@ def execute_protocol(
     ids: EngineIds,
     clock: Clock,
     policy: ExecutionPolicy | None = None,
+    language: RequestedLanguage | str = RequestedLanguage.AUTO,
     progress: ProgressCallback | None = None,
 ) -> EngineResult:
     validate_protocol(protocol)
     policy = default_execution_policy() if policy is None else policy
+    run_language = RunLanguage.resolve(language, input_ref)
 
     run = create_run(
         protocol,
@@ -122,6 +125,7 @@ def execute_protocol(
         run_ids=ids.run_ids,
         trace_ids=ids.trace_ids,
         clock=clock,
+        language=run_language,
     )
     trace = create_trace(run)
     trace = _append_run_created_event(trace, run, ids=ids, clock=clock)
@@ -151,6 +155,7 @@ def execute_protocol(
                 llm=llm,
                 ids=ids,
                 clock=clock,
+                run_language=run_language,
                 progress=progress,
             )
     except _PolicyCancelled as exc:
@@ -223,6 +228,7 @@ def _execute_step(
     llm: LLMClient,
     ids: EngineIds,
     clock: Clock,
+    run_language: RunLanguage,
     progress: ProgressCallback | None,
 ) -> tuple[Run, Trace, ExecutionContext, PolicyState]:
     _emit_progress(
@@ -265,6 +271,7 @@ def _execute_step(
                 llm=llm,
                 ids=ids,
                 clock=clock,
+                run_language=run_language,
                 progress=progress,
             )
             produced_artifact_ids.append(artifact_id)
@@ -388,6 +395,7 @@ def _execute_step_for_role(
     llm: LLMClient,
     ids: EngineIds,
     clock: Clock,
+    run_language: RunLanguage,
     progress: ProgressCallback | None,
 ) -> tuple[Run, Trace, ExecutionContext, PolicyState, str]:
     try:
@@ -413,6 +421,7 @@ def _execute_step_for_role(
                 "artifact_ids": list(resolved_inputs.artifact_ids),
                 "artifacts": _resolve_input_artifacts(run, resolved_inputs.artifact_ids),
             },
+            resolved_language=run_language.resolved,
         )
         decision_result = decide_before_call(
             policy,
