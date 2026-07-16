@@ -171,6 +171,46 @@ Analyze run health metrics:
 delibra analyze-run --run run.json --trace trace.json
 ```
 
+Compare completed runs mechanically:
+
+```bash
+delibra compare-runs \
+  --run first.run.json \
+  --trace first.trace.json \
+  --run second.run.json \
+  --trace second.trace.json \
+  --output comparison.md
+```
+
+`compare-runs` is an experimental Delibra Observatory helper. It consumes
+persisted `run.json` / `trace.json` pairs, aligns artifacts by protocol position
+(`step_id`, `role_id`, `output`, `artifact_kind`, and ordinal when needed), and
+writes a Markdown draft marked `review_required`. Step kind is not reconstructed
+because it is not persisted in `run.json` or `trace.json`. The draft reports
+input identity by deterministic digest and size by default. It does not call
+providers, rank models, infer provider/model from file names, or interpret
+artifact content.
+
+An optional experiment manifest can declare external comparison dimensions such
+as human variant labels, controlled dimensions, changed dimensions, and known
+provider/model metadata:
+
+```bash
+delibra compare-runs \
+  --manifest experiment.json \
+  --run first.run.json \
+  --trace first.trace.json \
+  --run second.run.json \
+  --trace second.trace.json \
+  --output comparison.md
+```
+
+Internal Delibra ids remain opaque and provider-free. File names are navigation
+labels only. Persisted `run.json` and `trace.json` content is authoritative for
+run, trace, protocol, input, artifact, and event facts. The manifest is
+authoritative only for external experimental context; contradictions with
+persisted content are reported in the generated draft.
+
 Run a real-use code review scenario:
 
 ```bash

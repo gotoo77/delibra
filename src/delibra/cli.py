@@ -5,6 +5,7 @@ import json
 import sys
 import time
 from collections.abc import Callable, Sequence
+from pathlib import Path
 
 from delibra import __version__
 from delibra.app.analysis import RunAnalysis, analyze_run
@@ -23,6 +24,13 @@ from delibra.app.local_runtime import (
     LocalRuntimeAssessment,
     LocalRuntimeIntent,
     assess_local_runtime,
+)
+from delibra.app.observatory import (
+    ObservatoryError,
+    RunTraceFiles,
+    compare_run_files,
+    load_experiment_manifest,
+    render_comparison_markdown,
 )
 from delibra.app.providers import build_llm_client
 from delibra.app.presets import PresetError, PresetInfo, list_presets, load_preset
@@ -124,6 +132,38 @@ def build_parser() -> argparse.ArgumentParser:
     analyze_run.add_argument("--run", required=True, help="path to canonical run JSON")
     analyze_run.add_argument("--trace", help="path to canonical trace JSON")
     analyze_run.set_defaults(handler=_analyze_run)
+
+    compare_runs = subparsers.add_parser(
+        "compare-runs",
+        help="compare completed run/trace pairs mechanically",
+        description=(
+            "Compare two or more completed run.json/trace.json pairs and write "
+            "a review-required Markdown draft. File names are labels only; "
+            "persisted run and trace content remains authoritative."
+        ),
+    )
+    compare_runs.add_argument(
+        "--run",
+        action="append",
+        required=True,
+        help="path to a canonical run JSON file; repeat once per run",
+    )
+    compare_runs.add_argument(
+        "--trace",
+        action="append",
+        required=True,
+        help="path to a canonical trace JSON file; repeat once per run",
+    )
+    compare_runs.add_argument(
+        "--manifest",
+        help="optional experimental manifest JSON for labels and external dimensions",
+    )
+    compare_runs.add_argument(
+        "--output",
+        required=True,
+        help="path to write the review-required Markdown comparison draft",
+    )
+    compare_runs.set_defaults(handler=_compare_runs)
 
     doctor = subparsers.add_parser(
         "doctor",
@@ -373,6 +413,49 @@ def _analyze_run(args: argparse.Namespace) -> int:
         return 1
 
     print(_render_run_analysis(analyze_run(run, trace)))
+    return 0
+
+
+def _compare_runs(args: argparse.Namespace) -> int:
+    if len(args.run) != len(args.trace):
+        print(
+            "delibra compare-runs: --run and --trace must be provided the same number of times",
+            file=sys.stderr,
+        )
+        return 1
+    if len(args.run) < 2:
+        print("delibra compare-runs: at least two run/trace pairs are required", file=sys.stderr)
+        return 1
+
+    try:
+        manifest = (
+            None
+            if args.manifest is None
+            else load_experiment_manifest(args.manifest)
+        )
+        comparison = compare_run_files(
+            tuple(
+                RunTraceFiles(run_path=Path(run), trace_path=Path(trace))
+                for run, trace in zip(args.run, args.trace, strict=True)
+            ),
+            manifest=manifest,
+        )
+        Path(args.output).write_text(
+            render_comparison_markdown(comparison),
+            encoding="utf-8",
+        )
+    except (
+        OSError,
+        json.JSONDecodeError,
+        TypeError,
+        ValueError,
+        ObservatoryError,
+    ) as exc:
+        print(f"delibra compare-runs: {exc}", file=sys.stderr)
+        return 1
+
+    print(f"comparison: {args.output}")
+    print(f"classification: {comparison.assessment.classification}")
     return 0
 
 

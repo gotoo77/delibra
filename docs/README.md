@@ -12,6 +12,16 @@
 - [Local Runtime Experience Design Review](design-reviews/local-runtime-experience.md)
 - [Delibra Observatory Design Review](design-reviews/delibra-observatory.md)
 
+## Experimental Observatory Helper
+
+`delibra compare-runs` mechanically compares two or more persisted
+`run.json` / `trace.json` pairs and writes a Markdown draft for human review. It
+belongs to the application/CLI layer, not the durable core: internal ids remain
+opaque, file names are non-authoritative labels, and an optional experiment
+manifest may describe external comparison dimensions such as variant labels or
+known provider/model metadata. Positions use persisted artifact kind; step kind
+is not reconstructed because it is not persisted in run or trace files.
+
 ## Presets
 
 Presets are reusable Delibra recipes: versioned YAML protocols that encode

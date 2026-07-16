@@ -162,6 +162,17 @@ class CliSmokeTests(unittest.TestCase):
         self.assertIn("--run", result.stdout)
         self.assertIn("--trace", result.stdout)
 
+    def test_compare_runs_help_runs_successfully(self) -> None:
+        result = run_cli("compare-runs", "--help")
+
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("usage: delibra compare-runs", result.stdout)
+        self.assertIn("--run", result.stdout)
+        self.assertIn("--trace", result.stdout)
+        self.assertIn("--manifest", result.stdout)
+        self.assertIn("--output", result.stdout)
+        self.assertIn("Markdown draft", result.stdout)
+
     def test_validate_requires_protocol_path(self) -> None:
         result = run_cli("validate")
 
