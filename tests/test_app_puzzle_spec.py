@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import json
 import unittest
 
-from delibra.app.puzzle_spec import validate_puzzle_spec
+from delibra.app.puzzle_spec import (
+    evaluate_puzzle_spec_payload,
+    extract_puzzle_spec,
+    validate_puzzle_spec,
+)
 
 
 VALID_SPEC = {
@@ -17,6 +22,96 @@ VALID_SPEC = {
 
 
 class PuzzleSpecValidatorTests(unittest.TestCase):
+    def test_extract_puzzle_spec_reads_strict_json_from_payload_content(self) -> None:
+        result = extract_puzzle_spec({"content": json.dumps(VALID_SPEC)})
+
+        self.assertTrue(result.extracted)
+        self.assertEqual(result.document, VALID_SPEC)
+        self.assertIsNone(result.error)
+
+    def test_extract_puzzle_spec_rejects_non_object_payload(self) -> None:
+        result = extract_puzzle_spec("not a payload")
+
+        self.assertFalse(result.extracted)
+        self.assertIsNotNone(result.error)
+        assert result.error is not None
+        self.assertEqual(result.error.code, "EXTRACTION_PAYLOAD_NOT_OBJECT")
+        self.assertEqual(result.error.field, "$")
+
+    def test_extract_puzzle_spec_rejects_missing_content(self) -> None:
+        result = extract_puzzle_spec({"text": json.dumps(VALID_SPEC)})
+
+        self.assertFalse(result.extracted)
+        self.assertIsNotNone(result.error)
+        assert result.error is not None
+        self.assertEqual(result.error.code, "EXTRACTION_CONTENT_MISSING")
+        self.assertEqual(result.error.field, "content")
+
+    def test_extract_puzzle_spec_rejects_non_string_content(self) -> None:
+        result = extract_puzzle_spec({"content": VALID_SPEC})
+
+        self.assertFalse(result.extracted)
+        self.assertIsNotNone(result.error)
+        assert result.error is not None
+        self.assertEqual(result.error.code, "EXTRACTION_CONTENT_NOT_STRING")
+        self.assertEqual(result.error.field, "content")
+
+    def test_extract_puzzle_spec_rejects_invalid_json_content(self) -> None:
+        result = extract_puzzle_spec({"content": "{"})
+
+        self.assertFalse(result.extracted)
+        self.assertIsNotNone(result.error)
+        assert result.error is not None
+        self.assertEqual(result.error.code, "EXTRACTION_INVALID_JSON")
+        self.assertEqual(result.error.field, "content")
+
+    def test_evaluate_puzzle_spec_payload_reports_extraction_error(self) -> None:
+        result = evaluate_puzzle_spec_payload({"content": "{"})
+
+        self.assertEqual(result.status, "extraction_error")
+        self.assertIsNotNone(result.extraction_error)
+        assert result.extraction_error is not None
+        self.assertEqual(result.extraction_error.code, "EXTRACTION_INVALID_JSON")
+        self.assertIsNone(result.puzzle_spec_validation_report)
+        self.assertIsNone(result.accepted_puzzle_spec)
+
+    def test_evaluate_puzzle_spec_payload_reports_invalid_spec(self) -> None:
+        result = evaluate_puzzle_spec_payload(
+            {
+                "content": json.dumps(
+                    {
+                        "scope": "single_fixed_spot",
+                        "answer": "Find the order of the relics.",
+                        "validation_method": "Compare the relic cards with the printed answer slot.",
+                        "player_separation_allowed": False,
+                        "materials": ["relic cards"],
+                        "forbidden_mechanisms": ["lock"],
+                    }
+                )
+            }
+        )
+
+        self.assertEqual(result.status, "invalid")
+        self.assertIsNone(result.extraction_error)
+        self.assertIsNotNone(result.puzzle_spec_validation_report)
+        assert result.puzzle_spec_validation_report is not None
+        self.assertFalse(result.puzzle_spec_validation_report.valid)
+        self.assertEqual(
+            [error.code for error in result.puzzle_spec_validation_report.errors],
+            ["ANSWER_NOT_EXPLICIT"],
+        )
+        self.assertIsNone(result.accepted_puzzle_spec)
+
+    def test_evaluate_puzzle_spec_payload_accepts_valid_spec(self) -> None:
+        result = evaluate_puzzle_spec_payload({"content": json.dumps(VALID_SPEC)})
+
+        self.assertEqual(result.status, "accepted")
+        self.assertIsNone(result.extraction_error)
+        self.assertIsNotNone(result.puzzle_spec_validation_report)
+        assert result.puzzle_spec_validation_report is not None
+        self.assertTrue(result.puzzle_spec_validation_report.valid)
+        self.assertEqual(result.accepted_puzzle_spec, VALID_SPEC)
+
     def test_accepts_minimal_valid_puzzle_spec(self) -> None:
         result = validate_puzzle_spec(VALID_SPEC)
 

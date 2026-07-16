@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import unicodedata
 from dataclasses import dataclass
 from typing import Any
@@ -16,6 +17,28 @@ class PuzzleSpecValidationError:
 class PuzzleSpecValidationResult:
     valid: bool
     errors: tuple[PuzzleSpecValidationError, ...]
+
+
+@dataclass(frozen=True)
+class PuzzleSpecExtractionError:
+    code: str
+    field: str
+    message: str
+
+
+@dataclass(frozen=True)
+class PuzzleSpecExtractionResult:
+    extracted: bool
+    document: object | None = None
+    error: PuzzleSpecExtractionError | None = None
+
+
+@dataclass(frozen=True)
+class PuzzleSpecPayloadEvaluation:
+    status: str
+    extraction_error: PuzzleSpecExtractionError | None = None
+    puzzle_spec_validation_report: PuzzleSpecValidationResult | None = None
+    accepted_puzzle_spec: dict[str, Any] | None = None
 
 
 _ANSWER_GOAL_PATTERNS = (
@@ -81,6 +104,72 @@ _SCOPE_DISQUALIFYING_PATTERNS = (
     "plusieurs salles",
     "progression through",
 )
+
+
+def extract_puzzle_spec(payload: object) -> PuzzleSpecExtractionResult:
+    if not isinstance(payload, dict):
+        return PuzzleSpecExtractionResult(
+            extracted=False,
+            error=PuzzleSpecExtractionError(
+                code="EXTRACTION_PAYLOAD_NOT_OBJECT",
+                field="$",
+                message="Payload must be a JSON object containing a content field.",
+            ),
+        )
+    if "content" not in payload:
+        return PuzzleSpecExtractionResult(
+            extracted=False,
+            error=PuzzleSpecExtractionError(
+                code="EXTRACTION_CONTENT_MISSING",
+                field="content",
+                message="Payload must contain a content field.",
+            ),
+        )
+    content = payload["content"]
+    if not isinstance(content, str):
+        return PuzzleSpecExtractionResult(
+            extracted=False,
+            error=PuzzleSpecExtractionError(
+                code="EXTRACTION_CONTENT_NOT_STRING",
+                field="content",
+                message="Payload content must be a string containing strict JSON.",
+            ),
+        )
+    try:
+        document = json.loads(content)
+    except json.JSONDecodeError as exc:
+        return PuzzleSpecExtractionResult(
+            extracted=False,
+            error=PuzzleSpecExtractionError(
+                code="EXTRACTION_INVALID_JSON",
+                field="content",
+                message=f"Payload content is not valid JSON: {exc.msg}.",
+            ),
+        )
+    return PuzzleSpecExtractionResult(extracted=True, document=document)
+
+
+def evaluate_puzzle_spec_payload(payload: object) -> PuzzleSpecPayloadEvaluation:
+    extraction = extract_puzzle_spec(payload)
+    if not extraction.extracted:
+        return PuzzleSpecPayloadEvaluation(
+            status="extraction_error",
+            extraction_error=extraction.error,
+        )
+
+    validation = validate_puzzle_spec(extraction.document)
+    if not validation.valid:
+        return PuzzleSpecPayloadEvaluation(
+            status="invalid",
+            puzzle_spec_validation_report=validation,
+        )
+
+    assert isinstance(extraction.document, dict)
+    return PuzzleSpecPayloadEvaluation(
+        status="accepted",
+        puzzle_spec_validation_report=validation,
+        accepted_puzzle_spec=extraction.document,
+    )
 
 
 def validate_puzzle_spec(spec: object) -> PuzzleSpecValidationResult:

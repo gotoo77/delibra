@@ -314,3 +314,56 @@ Expected outcomes:
 - strict JSON plus invalid `puzzle_spec` produces a stable invalid validation
   report;
 - invalid JSON content produces a distinct extraction error report.
+
+## Puzzle Spec Payload Extraction Result
+
+The first local extraction tranche added `extract_puzzle_spec(payload)` and
+`evaluate_puzzle_spec_payload(payload)` in the application layer.
+
+The accepted input shape is intentionally minimal:
+
+```json
+{
+  "content": "{\"scope\":\"single_fixed_spot\", ...}"
+}
+```
+
+The implementation distinguishes three local outcomes:
+
+- `extraction_error`: `payload.content` could not be converted into a strict
+  JSON document;
+- `invalid`: strict JSON was extracted, but `validate_puzzle_spec` rejected the
+  document;
+- `accepted`: strict JSON was extracted and accepted as an `accepted_puzzle_spec`.
+
+Observed as puzzle-specific:
+
+- the required `puzzle_spec` fields;
+- the domain error codes such as `ANSWER_NOT_EXPLICIT`;
+- the disqualifying puzzle-design phrases and validation-method patterns.
+
+Observed as potentially domain-independent:
+
+- extraction failure and contract violation are different outcomes;
+- validation should not run after extraction failure;
+- the accepted document can remain a local application result rather than a
+  durable runtime artifact;
+- stable status labels make the result easier to test and eventually render.
+
+Still ambiguous:
+
+- whether invalid candidates should become durable artifacts;
+- whether validation provenance needs validator id, validator version, or both;
+- whether a future promotion step belongs in the application layer, protocol
+  layer, or runtime;
+- whether other domains need warnings or partial acceptance in addition to
+  valid/invalid.
+
+Deliberately not generalized:
+
+- no generic artifact validator interface;
+- no runtime validator registry;
+- no new `StepKind`;
+- no durable `accepted_artifact` or `rejected_artifact` model;
+- no tolerant extraction from prose;
+- no repair or retry loop.
