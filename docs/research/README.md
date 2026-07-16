@@ -12,3 +12,4 @@ Current notes:
 
 - [Structured Artifact Refinement Notes](structured-artifact-refinement-notes.md)
 - [Decision Record Validation Framing](decision-record-validation-framing.md)
+- [Decision Record Representative Fixtures](decision-record-fixtures.md)
