@@ -3,7 +3,8 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from collections.abc import Sequence
+import time
+from collections.abc import Callable, Sequence
 
 from delibra import __version__
 from delibra.app.analysis import RunAnalysis, analyze_run
@@ -101,7 +102,7 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument(
         "--progress",
         action="store_true",
-        help="print run progress to stderr",
+        help="print elapsed run progress and step durations to stderr",
     )
     run.set_defaults(handler=_run)
 
@@ -255,10 +256,49 @@ def _load_run_input(args: argparse.Namespace):
 
 
 def _build_progress_printer(provider: str):
+    renderer = ProgressRenderer(provider)
+
     def print_progress(event: EngineProgressEvent) -> None:
-        print(_render_progress_event(event, provider), file=sys.stderr)
+        print(renderer.render(event), file=sys.stderr)
 
     return print_progress
+
+
+class ProgressRenderer:
+    def __init__(
+        self,
+        provider: str,
+        *,
+        monotonic_clock: Callable[[], float] = time.monotonic,
+    ) -> None:
+        # CLI progress measures local elapsed durations. It deliberately does not
+        # reuse durable UTC clocks used for run and trace timestamps.
+        self.provider = provider
+        self.monotonic_clock = monotonic_clock
+        self.run_started_at: float | None = None
+        self.step_started_at_by_step_id: dict[str, float] = {}
+
+    def render(self, event: EngineProgressEvent) -> str:
+        now = self.monotonic_clock()
+        if event.type == "run_started" and self.run_started_at is None:
+            self.run_started_at = now
+        elapsed = 0.0 if self.run_started_at is None else now - self.run_started_at
+        message = _render_progress_event(event, self.provider)
+        duration = self._duration_suffix(event, now)
+        return f"[+{elapsed:.2f}s] {message}{duration}"
+
+    def _duration_suffix(self, event: EngineProgressEvent, now: float) -> str:
+        if event.type == "step_started" and event.step_id is not None:
+            self.step_started_at_by_step_id[event.step_id] = now
+            return ""
+        if event.type == "step_completed" and event.step_id is not None:
+            started_at = self.step_started_at_by_step_id.pop(event.step_id, None)
+            if started_at is not None:
+                return f" duration={now - started_at:.2f}s"
+            return ""
+        if event.type in {"run_completed", "run_failed"} and self.run_started_at is not None:
+            return f" duration={now - self.run_started_at:.2f}s"
+        return ""
 
 
 def _render_progress_event(event: EngineProgressEvent, provider: str) -> str:

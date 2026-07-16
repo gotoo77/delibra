@@ -8,6 +8,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from delibra.cli import ProgressRenderer
+from delibra.runtime import EngineProgressEvent
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -54,6 +57,37 @@ def _without_timestamps(value):
     if isinstance(value, list):
         return [_without_timestamps(item) for item in value]
     return value
+
+
+def progress_event(
+    event_type: str,
+    *,
+    step_id: str | None = None,
+    step_kind: str | None = None,
+    role_id: str | None = None,
+    artifact_id: str | None = None,
+    artifact_count: int | None = None,
+) -> EngineProgressEvent:
+    return EngineProgressEvent(
+        type=event_type,
+        run_id="run_0001",
+        protocol_id="protocol",
+        protocol_version="0.1.0",
+        step_id=step_id,
+        step_kind=step_kind,
+        role_id=role_id,
+        artifact_id=artifact_id,
+        artifact_count=artifact_count,
+    )
+
+
+def monotonic_clock(*values: float):
+    items = iter(values)
+
+    def now() -> float:
+        return next(items)
+
+    return now
 
 
 class CliSmokeTests(unittest.TestCase):
@@ -646,13 +680,91 @@ class CliSmokeTests(unittest.TestCase):
 
             self.assertEqual(result.returncode, 0)
             self.assertEqual(result.stdout, "")
+            self.assertIn("[+", result.stderr)
             self.assertIn("delibra run: started", result.stderr)
             self.assertIn("provider=mock", result.stderr)
             self.assertIn("delibra run: step started step=reviews kind=fanout", result.stderr)
             self.assertIn("delibra run: role started step=reviews role=maintainer", result.stderr)
+            self.assertIn("duration=", result.stderr)
             self.assertIn("delibra run: completed artifacts=5", result.stderr)
             self.assertTrue(run_output.exists())
             self.assertTrue(trace_output.exists())
+
+    def test_progress_renderer_reports_elapsed_and_step_duration(self) -> None:
+        renderer = ProgressRenderer(
+            "mock",
+            monotonic_clock=monotonic_clock(100.0, 100.2, 104.8, 104.9),
+        )
+
+        self.assertEqual(
+            renderer.render(progress_event("run_started")),
+            "[+0.00s] delibra run: started run=run_0001 protocol=protocol@0.1.0 provider=mock",
+        )
+        self.assertEqual(
+            renderer.render(
+                progress_event("step_started", step_id="frame", step_kind="prompt")
+            ),
+            "[+0.20s] delibra run: step started step=frame kind=prompt",
+        )
+        self.assertEqual(
+            renderer.render(
+                progress_event("step_completed", step_id="frame", artifact_count=1)
+            ),
+            "[+4.80s] delibra run: step completed step=frame artifacts=1 duration=4.60s",
+        )
+        self.assertEqual(
+            renderer.render(progress_event("run_completed", artifact_count=1)),
+            "[+4.90s] delibra run: completed artifacts=1 duration=4.90s",
+        )
+
+    def test_progress_renderer_keeps_independent_step_start_times(self) -> None:
+        renderer = ProgressRenderer(
+            "mock",
+            monotonic_clock=monotonic_clock(0.0, 1.0, 2.0, 5.0, 8.0),
+        )
+
+        renderer.render(progress_event("run_started"))
+        renderer.render(progress_event("step_started", step_id="a", step_kind="prompt"))
+        renderer.render(
+            progress_event("role_started", step_id="a", role_id="framer")
+        )
+        renderer.render(
+            progress_event("step_started", step_id="b", step_kind="synthesize")
+        )
+        rendered = renderer.render(
+            progress_event("step_completed", step_id="a", artifact_count=1)
+        )
+
+        self.assertEqual(
+            rendered,
+            "[+8.00s] delibra run: step completed step=a artifacts=1 duration=7.00s",
+        )
+
+    def test_progress_renderer_omits_duration_when_step_start_is_unknown(self) -> None:
+        renderer = ProgressRenderer(
+            "mock",
+            monotonic_clock=monotonic_clock(10.0, 14.0),
+        )
+
+        renderer.render(progress_event("run_started"))
+        rendered = renderer.render(
+            progress_event("step_completed", step_id="frame", artifact_count=1)
+        )
+
+        self.assertEqual(
+            rendered,
+            "[+4.00s] delibra run: step completed step=frame artifacts=1",
+        )
+
+    def test_progress_renderer_omits_duration_when_run_start_is_unknown(self) -> None:
+        renderer = ProgressRenderer("mock", monotonic_clock=monotonic_clock(14.0))
+
+        rendered = renderer.render(progress_event("run_completed", artifact_count=1))
+
+        self.assertEqual(
+            rendered,
+            "[+0.00s] delibra run: completed artifacts=1",
+        )
 
     def test_openai_provider_missing_config_fails_cleanly(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

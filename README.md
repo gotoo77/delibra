@@ -107,8 +107,9 @@ delibra run \
   --progress
 ```
 
-Use `--progress` for long runs to print step and role progress to stderr without
-changing the machine-readable run and trace output files.
+Use `--progress` for long runs to print elapsed step and role progress to stderr.
+Progress timings are computed locally for terminal display. These measurements
+are ephemeral and do not modify the run, trace, or artifact formats.
 
 In v0.1, multi-role `fanout` and `criticize` steps execute roles sequentially.
 They are semantic fanout steps, not parallel execution primitives.
