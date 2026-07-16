@@ -8,3 +8,7 @@ runtime change.
 
 Do not treat files in this directory as accepted architecture.
 
+Current notes:
+
+- [Structured Artifact Refinement Notes](structured-artifact-refinement-notes.md)
+- [Decision Record Validation Framing](decision-record-validation-framing.md)
