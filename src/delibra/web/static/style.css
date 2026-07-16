@@ -358,6 +358,55 @@ input[type="checkbox"] {
   overflow: auto;
 }
 
+.preset-tabs {
+  display: inline-flex;
+  gap: 4px;
+  margin: 10px 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 3px;
+}
+
+.preset-tabs button,
+.button.compact {
+  min-height: 30px;
+  padding: 4px 9px;
+  font-size: 0.9rem;
+}
+
+.preset-tabs button {
+  border-color: transparent;
+}
+
+.preset-tabs button[aria-selected="true"] {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.source-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 8px 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.yaml-source {
+  max-height: 420px;
+}
+
+.yaml-key {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.yaml-comment {
+  color: var(--muted);
+  font-style: italic;
+}
+
 .protocol-steps {
   display: grid;
   gap: 10px;

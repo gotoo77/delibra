@@ -36,36 +36,50 @@
             {{ 'hidden' if form.preset != preset.name else '' }}
           >
             <summary>{{ preset.name }}@{{ preset.version }}</summary>
-            <p class="muted">{{ preset.description }}</p>
-            {% if preset.roles %}
-              <p><strong>Roles:</strong> {{ preset.roles | join(', ') }}</p>
-            {% endif %}
-            <ol class="protocol-steps">
-              {% for step in preset.steps %}
-                <li class="protocol-step">
-                  <strong>{{ step.id }}</strong>
-                  <dl>
-                    <div>
-                      <dt>Kind</dt>
-                      <dd>{{ step.kind }}</dd>
-                    </div>
-                    <div>
-                      <dt>Roles</dt>
-                      <dd>{{ step.roles | join(', ') if step.roles else 'none' }}</dd>
-                    </div>
-                    <div>
-                      <dt>Inputs</dt>
-                      <dd>{{ step.inputs | join(', ') if step.inputs else 'none' }}</dd>
-                    </div>
-                    <div>
-                      <dt>Produces</dt>
-                      <dd>{{ step.output }} ({{ step.output_kind }})</dd>
-                    </div>
-                  </dl>
-                  <p>{{ step.instruction_preview }}</p>
-                </li>
-              {% endfor %}
-            </ol>
+            <div class="preset-tabs" role="tablist" aria-label="Preset detail views">
+              <button type="button" data-preset-tab="overview" aria-selected="true">Overview</button>
+              <button type="button" data-preset-tab="raw" aria-selected="false">Raw YAML</button>
+            </div>
+            <div data-preset-panel="overview">
+              <p class="muted">{{ preset.description }}</p>
+              {% if preset.roles %}
+                <p><strong>Roles:</strong> {{ preset.roles | join(', ') }}</p>
+              {% endif %}
+              <ol class="protocol-steps">
+                {% for step in preset.steps %}
+                  <li class="protocol-step">
+                    <strong>{{ step.id }}</strong>
+                    <dl>
+                      <div>
+                        <dt>Kind</dt>
+                        <dd>{{ step.kind }}</dd>
+                      </div>
+                      <div>
+                        <dt>Roles</dt>
+                        <dd>{{ step.roles | join(', ') if step.roles else 'none' }}</dd>
+                      </div>
+                      <div>
+                        <dt>Inputs</dt>
+                        <dd>{{ step.inputs | join(', ') if step.inputs else 'none' }}</dd>
+                      </div>
+                      <div>
+                        <dt>Produces</dt>
+                        <dd>{{ step.output }} ({{ step.output_kind }})</dd>
+                      </div>
+                    </dl>
+                    <p>{{ step.instruction_preview }}</p>
+                  </li>
+                {% endfor %}
+              </ol>
+            </div>
+            <div data-preset-panel="raw" hidden>
+              <div class="source-meta">
+                <span>Source: {{ preset.source_path }}</span>
+                <span>Version: {{ preset.version }}</span>
+                <button type="button" class="button compact" data-copy-yaml>Copy</button>
+              </div>
+              <pre class="yaml-source"><code data-yaml-source>{{ preset.source_yaml }}</code></pre>
+            </div>
           </details>
         {% endfor %}
       </div>

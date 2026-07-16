@@ -6,12 +6,14 @@ import urllib.error
 import urllib.request
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Callable
 
 from delibra.app.local_diagnostics import LocalDiagnostics
 from delibra.app.models import ProviderId
-from delibra.app.presets import PresetInfo, load_preset
+from delibra.app.presets import PresetInfo
 from delibra.core import Protocol, StepDefinition
+from delibra.protocol_loader import load_protocol_yaml
 from delibra.runtime.openai import (
     DEFAULT_OPENAI_BASE_URL,
     OPENAI_API_KEY_ENV,
@@ -54,6 +56,8 @@ class PresetDetail:
     protocol_id: str
     version: str
     description: str
+    source_path: str
+    source_yaml: str
     roles: tuple[str, ...]
     steps: tuple[ProtocolStepSummary, ...]
 
@@ -189,7 +193,7 @@ def describe_presets(presets: Sequence[PresetInfo]) -> tuple[PresetDetail, ...]:
 
 
 def describe_preset(preset: PresetInfo) -> PresetDetail:
-    protocol = load_preset(preset.name)
+    protocol = load_protocol_yaml(preset.path)
     return _preset_detail(preset, protocol)
 
 
@@ -199,9 +203,18 @@ def _preset_detail(preset: PresetInfo, protocol: Protocol) -> PresetDetail:
         protocol_id=protocol.id,
         version=protocol.version,
         description=protocol.description,
+        source_path=_display_path(preset.path),
+        source_yaml=preset.path.read_text(encoding="utf-8"),
         roles=tuple(sorted(protocol.roles)),
         steps=tuple(_step_summary(step) for step in protocol.steps),
     )
+
+
+def _display_path(path) -> str:
+    try:
+        return path.relative_to(Path.cwd()).as_posix()
+    except ValueError:
+        return path.as_posix()
 
 
 def _step_summary(step: StepDefinition) -> ProtocolStepSummary:

@@ -60,6 +60,9 @@ class AppRunConfigTests(unittest.TestCase):
 
         steps = {step.id: step for step in detail.steps}
         self.assertEqual(detail.protocol_id, "code_review")
+        self.assertEqual(detail.source_path, "presets/code_review.yaml")
+        self.assertIn("id: code_review", detail.source_yaml)
+        self.assertIn("Structured code review protocol.", detail.source_yaml)
         self.assertIn("security", detail.roles)
         self.assertEqual(steps["role_reviews"].kind, "fanout")
         self.assertEqual(steps["role_reviews"].roles, ("maintainer", "tester", "security"))
