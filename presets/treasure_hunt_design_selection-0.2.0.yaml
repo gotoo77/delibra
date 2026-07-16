@@ -1,0 +1,456 @@
+id: treasure_hunt_design_selection
+version: 0.2.0
+description: >
+  Experimental constraint-first treasure hunt design protocol with comparative
+  selection, adversarial review, provenance checking, and strict final synthesis.
+
+roles:
+  constraint_analyst:
+    name: Constraint Analyst
+    instruction: >
+      Extract explicit requirements, prohibitions, quantitative limits, preferences,
+      ambiguities, and unresolved questions from the user input. Never silently weaken
+      or reinterpret a constraint.
+
+  designer:
+    name: Designer
+    instruction: >
+      Imagine the overall player experience, pacing, constraints, game DNA, and
+      memorable design shape. Prefer concrete and implementable mechanisms over generic
+      thematic ideas.
+
+  logic_architect:
+    name: Logic Architect
+    instruction: >
+      Check step coherence, dependency order, solvability, state transitions, clue
+      sufficiency, and whether every puzzle has a justified solution path.
+
+  narrator:
+    name: Narrator
+    instruction: >
+      Give the hunt a short narrative continuity, clear stakes, and a tone consistent
+      with the requested experience. Narrative must support the puzzles rather than hide
+      logical gaps.
+
+  curator:
+    name: Curator
+    instruction: >
+      Verify that domains, references, cultural knowledge, physical constraints, and
+      puzzle materials are relevant, accessible, and non-artificial.
+
+  saboteur:
+    name: Saboteur
+    instruction: >
+      Look for flaws, ambiguities, dead ends, unintended shortcuts, forbidden
+      mechanisms, puzzles that are too easy, and puzzles that are unfair.
+
+  playtester:
+    name: Playtester
+    instruction: >
+      Simulate target players attempting the hunt, including likely observations,
+      mistakes, alternate interpretations, requests for hints, and points of confusion.
+
+  emergent:
+    name: Emergent
+    instruction: >
+      Search for an unexpected elegant, memorable, or thematic property that emerges
+      from the constraints and can improve the design without violating them.
+
+  selector:
+    name: Design Selector
+    instruction: >
+      Compare candidate contributions and critiques. Select and combine only compatible,
+      well-supported material. Explain rejected alternatives and preserve uncertainty
+      when evidence is insufficient.
+
+  constraint_auditor:
+    name: Constraint Auditor
+    instruction: >
+      Audit a proposed design against every extracted constraint. Count quantitative
+      elements explicitly. Treat any forbidden mechanism as a failure even when it is
+      only implied or renamed.
+
+  provenance_auditor:
+    name: Provenance Auditor
+    instruction: >
+      Check whether each concrete location, object, mechanism, puzzle, narrative fact,
+      and numerical claim in a proposed design is supported by an input artifact.
+      Flag unsupported additions. Do not repair or invent content.
+
+  synthesizer:
+    name: Strict Synthesizer
+    instruction: >
+      Produce a structured and testable design derived only from validated artifacts.
+      Never invent missing locations, objects, mechanisms, clues, solutions, counts, or
+      story facts. Mark missing information as UNSPECIFIED.
+
+  final_reviewer:
+    name: Final Reviewer
+    instruction: >
+      Compare the complete draft directly with the user constraints and validation
+      artifacts. Identify exact corrections required before release. Do not introduce
+      new design material.
+
+steps:
+  - id: extract_constraints
+    kind: prompt
+    role: constraint_analyst
+    roles: null
+    instruction: |
+      Extract a normalized constraint contract from the user input.
+
+      Produce:
+      - objective
+      - target_players
+      - duration
+      - requested_puzzle_count
+      - difficulty
+      - theme_and_setting
+      - required_elements
+      - forbidden_elements
+      - physical_constraints
+      - domain_constraints
+      - desired_tone
+      - preferences
+      - ambiguities
+      - unresolved_questions
+
+      Rules:
+      - Preserve exact quantities and prohibitions.
+      - Do not infer that an omitted mechanism is allowed or forbidden.
+      - Distinguish hard constraints from preferences.
+      - Use UNSPECIFIED for absent information.
+    inputs:
+      - user_input
+    produces:
+      output: constraint_contract
+      kind: constraint_contract
+
+  - id: derive_game_dna
+    kind: prompt
+    role: designer
+    roles: null
+    instruction: |
+      Derive the game DNA from the user input and constraint contract.
+
+      Produce:
+      - emotion_dominante
+      - niveau_observation
+      - niveau_deduction
+      - niveau_cooperation
+      - niveau_manipulation_physique
+      - place_culture_generale
+      - place_humour
+      - nombre_twists_souhaites
+      - pacing_target
+      - assumptions
+      - unresolved_questions
+
+      Every assumption must be explicit and must not contradict the constraint contract.
+    inputs:
+      - user_input
+      - constraint_contract
+    produces:
+      output: game_dna
+      kind: game_dna
+
+  - id: design_candidates
+    kind: fanout
+    role: null
+    roles:
+      - designer
+      - logic_architect
+      - narrator
+      - curator
+      - emergent
+    instruction: |
+      Produce a role-specific candidate contribution using the original input,
+      constraint contract, and game DNA.
+
+      Include relevant parts of:
+      - short narrative vision
+      - stage map
+      - main puzzles
+      - progressive hints
+      - expected solutions
+      - blocking risks
+      - possible false leads
+      - solvability checks
+      - memorable emergent property
+
+      Mandatory rules:
+      - Respect every hard constraint and prohibition.
+      - Use exactly the requested puzzle count when one is specified.
+      - Do not use a forbidden mechanism under another name.
+      - Do not add concrete objects, rooms, technologies, or facts without stating them
+        explicitly in the candidate.
+      - Mark unresolved design gaps as UNSPECIFIED rather than hiding them.
+    inputs:
+      - user_input
+      - constraint_contract
+      - game_dna
+    produces:
+      output: design_views
+      kind: design_view
+
+  - id: stress_test_design
+    kind: criticize
+    role: null
+    roles:
+      - saboteur
+      - playtester
+      - logic_architect
+      - curator
+    instruction: |
+      Critique the design views against the original input, constraint contract, and
+      game DNA.
+
+      Check:
+      - exact puzzle count
+      - all forbidden elements
+      - duration and pacing feasibility
+      - target-player suitability
+      - incoherent dependencies
+      - missing clues or unjustified leaps
+      - artificial domain usage
+      - likely dead ends
+      - accidental alternate solutions
+      - unfair false leads
+      - puzzles that are too easy or too opaque
+      - concrete actions a playtester would attempt
+
+      End with:
+      - blocking_violations
+      - required_changes
+      - acceptable_tradeoffs
+      - material_that_should_be_rejected
+    inputs:
+      - user_input
+      - constraint_contract
+      - game_dna
+      - design_views
+    produces:
+      output: design_critiques
+      kind: critique
+
+  - id: select_design_material
+    kind: prompt
+    role: selector
+    roles: null
+    instruction: |
+      Select the strongest compatible material from the design views after considering
+      every critique.
+
+      Produce:
+      - selected_game_shape
+      - selected_narrative_material
+      - selected_stage_map
+      - selected_puzzles
+      - selected_hints
+      - selected_solutions
+      - selected_risks
+      - selected_false_leads
+      - selected_solvability_evidence
+      - selected_emergent_property
+      - rejected_material_and_reasons
+      - unresolved_gaps
+
+      Rules:
+      - Do not silently repair a rejected idea by inventing replacement content.
+      - Do not select material with a blocking constraint violation.
+      - Preserve the exact requested puzzle count.
+      - Every selected concrete element must be traceable to a design view.
+      - Use UNSPECIFIED where no valid candidate material exists.
+    inputs:
+      - user_input
+      - constraint_contract
+      - game_dna
+      - design_views
+      - design_critiques
+    produces:
+      output: selected_design_material
+      kind: selected_design_material
+
+  - id: audit_selected_design
+    kind: criticize
+    role: null
+    roles:
+      - constraint_auditor
+      - provenance_auditor
+    instruction: |
+      Audit the selected design material without rewriting it.
+
+      Constraint audit:
+      - Evaluate every item in the constraint contract.
+      - Use PASS, FAIL, or UNVERIFIABLE.
+      - Quote or precisely identify the supporting or violating material.
+      - Count puzzles and other requested quantities explicitly.
+
+      Provenance audit:
+      - List every concrete location, object, mechanism, puzzle, narrative fact, and
+        numerical claim.
+      - Mark each as SUPPORTED, UNSUPPORTED, or AMBIGUOUS.
+      - Identify the input artifact that supports it.
+      - Treat newly introduced details as UNSUPPORTED.
+
+      End with:
+      - release_status: PASS or FAIL
+      - blocking_findings
+      - exact_repairs_required
+    inputs:
+      - user_input
+      - constraint_contract
+      - design_views
+      - design_critiques
+      - selected_design_material
+    produces:
+      output: selection_audit
+      kind: audit
+
+  - id: prepare_validated_material
+    kind: prompt
+    role: selector
+    roles: null
+    instruction: |
+      Prepare validated design material for final synthesis.
+
+      Apply only the exact repairs required by the selection audit.
+
+      Rules:
+      - Remove unsupported or constraint-violating material.
+      - Never replace removed content with invented material.
+      - Preserve supported material unchanged unless a correction is explicitly required.
+      - If a required section becomes incomplete, mark it UNSPECIFIED.
+      - Recount all quantitative elements after repairs.
+      - Include a constraint compliance matrix with PASS, FAIL, or UNVERIFIABLE.
+      - A remaining FAIL must be explicit and must not be disguised as a completed design.
+    inputs:
+      - user_input
+      - constraint_contract
+      - game_dna
+      - selected_design_material
+      - selection_audit
+    produces:
+      output: validated_design_material
+      kind: validated_design_material
+
+  - id: draft_final
+    kind: prompt
+    role: synthesizer
+    roles: null
+    instruction: |
+      Produce a first complete draft from validated material only.
+
+      Include:
+      1. constraint_compliance
+      2. game_dna
+      3. vision_narrative_courte
+      4. carte_des_etapes
+      5. enigmes_principales
+      6. indices_progressifs
+      7. solutions_attendues
+      8. risques_de_blocage
+      9. fausses_pistes_eventuelles
+      10. verification_de_resolubilite
+      11. propriete_emergente_memorable
+      12. limitations_et_todos
+
+      Mandatory rules:
+      - Do not invent.
+      - Use exactly the requested puzzle count.
+      - Never include forbidden mechanisms.
+      - Keep identifiers and numbering internally consistent.
+      - Every puzzle must have a corresponding hint, solution, and solvability statement.
+      - Use UNSPECIFIED for missing validated information.
+      - Do not claim the design is complete when any hard constraint is FAIL or
+        UNVERIFIABLE.
+    inputs:
+      - user_input
+      - constraint_contract
+      - game_dna
+      - validated_design_material
+    produces:
+      output: final_draft
+      kind: synthesis_draft
+
+  - id: review_final_draft
+    kind: criticize
+    role: null
+    roles:
+      - constraint_auditor
+      - provenance_auditor
+      - final_reviewer
+    instruction: |
+      Review the final draft before release.
+
+      Verify:
+      - every hard constraint
+      - exact puzzle count and numbering
+      - absence of forbidden mechanisms
+      - consistency between stages, puzzles, hints, and solutions
+      - support for every concrete claim
+      - absence of details introduced only during synthesis
+      - honest use of UNSPECIFIED
+      - accurate limitations
+
+      Produce:
+      - release_status: PASS or FAIL
+      - violations
+      - unsupported_additions
+      - inconsistencies
+      - exact_final_corrections
+    inputs:
+      - user_input
+      - constraint_contract
+      - validated_design_material
+      - final_draft
+    produces:
+      output: final_review
+      kind: final_review
+
+  - id: final
+    kind: synthesize
+    role: synthesizer
+    roles: null
+    instruction: |
+      Produce the final release candidate by applying only the exact corrections from
+      the final review to the final draft.
+
+      Include:
+      1. release_status
+      2. constraint_compliance
+      3. game_dna
+      4. vision_narrative_courte
+      5. carte_des_etapes
+      6. enigmes_principales
+      7. indices_progressifs
+      8. solutions_attendues
+      9. risques_de_blocage
+      10. fausses_pistes_eventuelles
+      11. verification_de_resolubilite
+      12. propriete_emergente_memorable
+      13. limitations_et_todos
+
+      Release rules:
+      - Do not invent any new design material.
+      - Do not hide or reinterpret a failed constraint.
+      - Use exactly the requested puzzle count when specified.
+      - Every puzzle identifier must appear consistently in the stage map, hints,
+        solutions, and solvability verification.
+      - If the final review reports an unresolved blocking violation, set
+        release_status to FAIL and expose the unresolved issue clearly.
+      - Use UNSPECIFIED where validated information is missing.
+      - In limitations_et_todos, state that this preset uses only prompt, fanout,
+        criticize, and synthesize. It does not add runtime loops, automatic rejection,
+        specialized puzzle validation, stateful play simulation, or external fact
+        checking.
+    inputs:
+      - user_input
+      - constraint_contract
+      - game_dna
+      - validated_design_material
+      - final_draft
+      - final_review
+    produces:
+      output: final_synthesis
+      kind: synthesis

@@ -17,6 +17,7 @@ See also [Observed Frictions](FRICTIONS.md) for the factual friction register.
 | 0005 | decision_review | mock | semantic value requires real provider, final synthesis access, possible file input friction | wait |
 | 0006 | decision_review | Ollama/qwen3:4b | unsupported claims amplified across artifacts | wait |
 | 0007 | comparative_qualification | Ollama/qwen3:4b and OpenAI/gpt-5.5 | same protocol/input produced different epistemic behavior | wait |
+| 0008 | methodological_observation | n/a | candidate abstractions should remain experimental until tested across independent contexts | wait |
 | 0009 | puzzle_design | Ollama/model not persisted | prompt-only quality gate accepted visibly invalid puzzle output | wait |
 
 ## Observed Patterns
@@ -37,6 +38,7 @@ Confidence levels:
 | Possible file input friction | 1 | 0005 | 0005 | Low |
 | Unsupported claims amplified across artifacts | 1 | 0006 | 0006 | Low |
 | Same protocol/input can show different epistemic behavior across model/provider configurations | 1 | 0007 | 0007 | Low |
+| Candidate abstractions should remain experimental until tested across independent contexts | 1 | 0008 | 0008 | Low |
 | Prompt-only quality gates can accept outputs that visibly violate their own criteria | 1 | 0009 | 0009 | Low |
 | Provider/model provenance is needed for experiment interpretation but should remain outside durable core artifacts | 1 | 0009 | 0009 | Low |
 
