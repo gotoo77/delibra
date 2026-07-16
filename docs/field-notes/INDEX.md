@@ -15,6 +15,7 @@ See also [Observed Frictions](FRICTIONS.md) for the factual friction register.
 | 0003 | design_review | mock | manual run/inspect workflow, final synthesis access | wait |
 | 0004 | decision_review | mock | final recommendation access, semantic value requires real provider | wait |
 | 0005 | decision_review | mock | semantic value requires real provider, final synthesis access, possible file input friction | wait |
+| 0006 | decision_review | Ollama/qwen3:4b | unsupported claims amplified across artifacts | wait |
 
 ## Observed Patterns
 
@@ -32,6 +33,7 @@ Confidence levels:
 | Provider diagnostics | 1 | 0001 | 0001 | Low |
 | Semantic value requires real provider | 2 | 0004 | 0005 | Medium |
 | Possible file input friction | 1 | 0005 | 0005 | Low |
+| Unsupported claims amplified across artifacts | 1 | 0006 | 0006 | Low |
 
 ## Current Reading
 
