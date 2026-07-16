@@ -27,9 +27,13 @@
 
     <label>
       Provider
-      <select name="provider" required>
+      <select name="provider" required data-provider-select>
         {% for provider in provider_options %}
-          <option value="{{ provider.id }}" {{ 'selected' if form.provider == provider.id else '' }}>
+          <option
+            value="{{ provider.id }}"
+            data-model-required="{{ 'true' if provider.model_required else 'false' }}"
+            {{ 'selected' if form.provider == provider.id else '' }}
+          >
             {{ provider.label }} - {{ provider.status }}
           </option>
         {% endfor %}
@@ -52,7 +56,7 @@
       {% endfor %}
     </div>
 
-    <label>
+    <label data-model-field>
       Model
       <input name="model" value="{{ form.model }}" maxlength="120" placeholder="mistral or qwen3:4b" list="ollama-models">
       {% if ollama_models %}
