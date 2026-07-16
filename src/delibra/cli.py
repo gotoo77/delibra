@@ -32,6 +32,12 @@ from delibra.app.observatory import (
     load_experiment_manifest,
     render_comparison_markdown,
 )
+from delibra.app.output_paths import (
+    RunOutputPathError,
+    RunOutputPaths,
+    prepare_run_output_paths,
+    resolve_run_output_paths,
+)
 from delibra.app.providers import build_llm_client
 from delibra.app.presets import PresetError, PresetInfo, list_presets, load_preset
 from delibra.app.storage import load_run_json, load_trace_json, write_run_outputs
@@ -105,8 +111,28 @@ def build_parser() -> argparse.ArgumentParser:
         "--policy",
         help="path to an execution policy YAML file",
     )
-    run.add_argument("--run-output", required=True, help="path to write run JSON")
-    run.add_argument("--trace-output", required=True, help="path to write trace JSON")
+    run.add_argument(
+        "--run-output",
+        help=(
+            "path to write run JSON; required unless --output-dir is provided. "
+            "When --output-dir is set, relative paths are resolved below it."
+        ),
+    )
+    run.add_argument(
+        "--trace-output",
+        help=(
+            "path to write trace JSON; required unless --output-dir is provided. "
+            "When --output-dir is set, relative paths are resolved below it."
+        ),
+    )
+    run.add_argument(
+        "--output-dir",
+        help=(
+            "write run and trace outputs under this directory. The directory is "
+            "created when needed. Defaults are run.json and trace.json; relative "
+            "--run-output and --trace-output paths are resolved below it."
+        ),
+    )
     run.add_argument(
         "--progress",
         action="store_true",
@@ -238,6 +264,17 @@ def _validate(args: argparse.Namespace) -> int:
 
 def _run(args: argparse.Namespace) -> int:
     try:
+        output_paths = resolve_run_output_paths(
+            run_output=args.run_output,
+            trace_output=args.trace_output,
+            output_dir=args.output_dir,
+        )
+        prepare_run_output_paths(output_paths)
+    except (OSError, RunOutputPathError) as exc:
+        print(f"delibra run: {exc}", file=sys.stderr)
+        return 1
+
+    try:
         protocol = _load_protocol_source(args)
         input_ref = _load_run_input(args)
     except (ProtocolLoadError, PresetError, OSError, TypeError, ValueError) as exc:
@@ -261,7 +298,7 @@ def _run(args: argparse.Namespace) -> int:
             progress=_build_progress_printer(args.provider) if args.progress else None,
         )
     except EngineExecutionError as exc:
-        _write_run_outputs(args, exc.result)
+        _write_run_outputs(output_paths, exc.result)
         print(f"delibra run: {exc}", file=sys.stderr)
         return 1
     except (
@@ -277,7 +314,10 @@ def _run(args: argparse.Namespace) -> int:
         print(f"delibra run: {exc}", file=sys.stderr)
         return 1
 
-    _write_run_outputs(args, result)
+    _write_run_outputs(output_paths, result)
+    if output_paths.uses_output_dir:
+        print(f"run_output: {output_paths.run_path}")
+        print(f"trace_output: {output_paths.trace_path}")
     return 0
 
 
@@ -376,8 +416,8 @@ def _render_progress_event(event: EngineProgressEvent, provider: str) -> str:
     return f"{prefix} {event.type}"
 
 
-def _write_run_outputs(args: argparse.Namespace, result) -> None:
-    write_run_outputs(result, run_path=args.run_output, trace_path=args.trace_output)
+def _write_run_outputs(paths: RunOutputPaths, result) -> None:
+    write_run_outputs(result, run_path=paths.run_path, trace_path=paths.trace_path)
 
 
 def _inspect(args: argparse.Namespace) -> int:

@@ -45,6 +45,28 @@ delibra run \
 from the local `presets/` directory. Use `delibra presets list` to discover
 available local presets.
 
+Group run outputs in a directory:
+
+```bash
+delibra run \
+  --preset decision_review \
+  --provider mock \
+  --input-text "Should Delibra support local LLMs by default?" \
+  --output-dir experiments/local-llm-default/mistral
+```
+
+`--output-dir` creates the directory, including parents, when needed. With no
+custom output names, Delibra writes `run.json` and `trace.json` under that
+directory. If `--run-output` and `--trace-output` are also provided, they must
+be relative paths and are resolved below `--output-dir`; paths that escape the
+directory are rejected after path normalization. Existing symlinks are followed
+during this validation, so a symlinked output directory is allowed but a symlink
+inside it that points outside is rejected. This is a local path check, not a
+general filesystem sandbox against changes made after validation. Existing
+output files are overwritten, matching the current `--run-output` /
+`--trace-output` behavior. Delibra does not infer provider, model, preset, date,
+or input values to build file names.
+
 Input can be supplied as inline text, a UTF-8 text file, or an inline JSON
 object:
 
@@ -175,10 +197,10 @@ Compare completed runs mechanically:
 
 ```bash
 delibra compare-runs \
-  --run first.run.json \
-  --trace first.trace.json \
-  --run second.run.json \
-  --trace second.trace.json \
+  --run experiments/local-llm-default/qwen/run.json \
+  --trace experiments/local-llm-default/qwen/trace.json \
+  --run experiments/local-llm-default/mistral/run.json \
+  --trace experiments/local-llm-default/mistral/trace.json \
   --output comparison.md
 ```
 

@@ -137,6 +137,9 @@ class CliSmokeTests(unittest.TestCase):
         self.assertNotIn("mock LLM", result.stdout)
         self.assertIn("--run-output", result.stdout)
         self.assertIn("--trace-output", result.stdout)
+        self.assertIn("--output-dir", result.stdout)
+        self.assertIn("Defaults are", result.stdout)
+        self.assertIn("run.json and trace.json", result.stdout)
 
     def test_inspect_help_runs_successfully(self) -> None:
         result = run_cli("inspect", "--help")
@@ -251,6 +254,179 @@ class CliSmokeTests(unittest.TestCase):
             self.assertEqual(result.stderr, "")
             self.assertTrue(run_output.exists())
             self.assertTrue(trace_output.exists())
+
+    def test_run_requires_outputs_without_output_dir(self) -> None:
+        result = run_cli(
+            "run",
+            "--protocol",
+            str(ROOT / "tests" / "fixtures" / "prompt_synthesize_protocol.yaml"),
+            "--input-text",
+            "Review this change.",
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("--run-output and --trace-output are required", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
+
+    def test_run_output_dir_writes_default_files_and_prints_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            output_dir = Path(tmp) / "experiments" / "local" / "mistral"
+
+            result = run_cli(
+                "run",
+                "--protocol",
+                str(ROOT / "tests" / "fixtures" / "prompt_synthesize_protocol.yaml"),
+                "--provider",
+                "mock",
+                "--input-text",
+                "Review this change.",
+                "--output-dir",
+                str(output_dir),
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stderr, "")
+            self.assertTrue((output_dir / "run.json").exists())
+            self.assertTrue((output_dir / "trace.json").exists())
+            self.assertIn(f"run_output: {output_dir / 'run.json'}", result.stdout)
+            self.assertIn(f"trace_output: {output_dir / 'trace.json'}", result.stdout)
+
+    def test_run_output_dir_accepts_relative_custom_names(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            output_dir = Path(tmp) / "experiments" / "custom"
+
+            result = run_cli(
+                "run",
+                "--protocol",
+                str(ROOT / "tests" / "fixtures" / "prompt_synthesize_protocol.yaml"),
+                "--input-text",
+                "Review this change.",
+                "--output-dir",
+                str(output_dir),
+                "--run-output",
+                "data/mistral.run.json",
+                "--trace-output",
+                "data/mistral.trace.json",
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertTrue((output_dir / "data" / "mistral.run.json").exists())
+            self.assertTrue((output_dir / "data" / "mistral.trace.json").exists())
+
+    def test_run_output_dir_rejects_absolute_custom_output_before_provider(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            output_dir = Path(tmp) / "experiments"
+
+            result = run_cli(
+                "run",
+                "--protocol",
+                str(ROOT / "presets" / "code_review.yaml"),
+                "--provider",
+                "openai",
+                "--input-text",
+                "Review this change.",
+                "--output-dir",
+                str(output_dir),
+                "--run-output",
+                str(Path(tmp) / "outside.run.json"),
+                "--trace-output",
+                "trace.json",
+                env_overrides={
+                    "OPENAI_API_KEY": None,
+                    "OPENAI_MODEL": None,
+                },
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("--run-output must be relative", result.stderr)
+            self.assertNotIn("OPENAI_API_KEY", result.stderr)
+            self.assertNotIn("Traceback", result.stderr)
+
+    def test_run_output_dir_rejects_escaping_relative_output(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            output_dir = Path(tmp) / "experiments"
+
+            result = run_cli(
+                "run",
+                "--protocol",
+                str(ROOT / "tests" / "fixtures" / "prompt_synthesize_protocol.yaml"),
+                "--input-text",
+                "Review this change.",
+                "--output-dir",
+                str(output_dir),
+                "--run-output",
+                "../outside.run.json",
+                "--trace-output",
+                "trace.json",
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("--run-output must stay within --output-dir", result.stderr)
+            self.assertFalse(output_dir.exists())
+            self.assertNotIn("Traceback", result.stderr)
+
+    def test_run_output_dir_rejects_identical_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            result = run_cli(
+                "run",
+                "--protocol",
+                str(ROOT / "tests" / "fixtures" / "prompt_synthesize_protocol.yaml"),
+                "--input-text",
+                "Review this change.",
+                "--output-dir",
+                str(Path(tmp) / "experiments"),
+                "--run-output",
+                "result.json",
+                "--trace-output",
+                "result.json",
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("run and trace output paths must be different", result.stderr)
+            self.assertNotIn("Traceback", result.stderr)
+
+    def test_run_output_dir_rejects_existing_file_as_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            output_dir = Path(tmp) / "output"
+            output_dir.write_text("not a directory", encoding="utf-8")
+
+            result = run_cli(
+                "run",
+                "--protocol",
+                str(ROOT / "tests" / "fixtures" / "prompt_synthesize_protocol.yaml"),
+                "--input-text",
+                "Review this change.",
+                "--output-dir",
+                str(output_dir),
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("output directory path is not a directory", result.stderr)
+            self.assertNotIn("Traceback", result.stderr)
+
+    def test_run_output_dir_preserves_existing_overwrite_policy(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            output_dir = Path(tmp) / "experiments"
+            output_dir.mkdir()
+            run_output = output_dir / "run.json"
+            trace_output = output_dir / "trace.json"
+            run_output.write_text("old run", encoding="utf-8")
+            trace_output.write_text("old trace", encoding="utf-8")
+
+            result = run_cli(
+                "run",
+                "--protocol",
+                str(ROOT / "tests" / "fixtures" / "prompt_synthesize_protocol.yaml"),
+                "--input-text",
+                "Review this change.",
+                "--output-dir",
+                str(output_dir),
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertNotEqual(run_output.read_text(encoding="utf-8"), "old run")
+            self.assertNotEqual(trace_output.read_text(encoding="utf-8"), "old trace")
+            self.assertEqual(json.loads(run_output.read_text(encoding="utf-8"))["id"], "run_0001")
 
     def test_run_accepts_input_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

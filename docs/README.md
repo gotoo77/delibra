@@ -57,9 +57,16 @@ delibra run \
   --preset treasure_hunt_design \
   --provider mock \
   --input-text "$(cat examples/treasure_hunt_design_input.md)" \
-  --run-output run.json \
-  --trace-output trace.json
+  --output-dir experiments/treasure_hunt_design/mock
 ```
+
+`delibra run --output-dir DIR` writes `run.json` and `trace.json` below `DIR`
+and creates the directory when needed. Relative `--run-output` and
+`--trace-output` names can customize file names within that directory; absolute
+paths and normalized escapes are rejected. Existing symlinks are followed for
+that validation: a symlinked output directory is allowed, while a symlink below
+it that points outside is rejected. This is a local path check, not a general
+filesystem sandbox.
 
 Example run with an execution policy:
 
