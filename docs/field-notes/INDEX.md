@@ -16,6 +16,7 @@ See also [Observed Frictions](FRICTIONS.md) for the factual friction register.
 | 0004 | decision_review | mock | final recommendation access, semantic value requires real provider | wait |
 | 0005 | decision_review | mock | semantic value requires real provider, final synthesis access, possible file input friction | wait |
 | 0006 | decision_review | Ollama/qwen3:4b | unsupported claims amplified across artifacts | wait |
+| 0007 | comparative_qualification | Ollama/qwen3:4b and OpenAI/gpt-5.5 | same protocol/input produced different epistemic behavior | wait |
 
 ## Observed Patterns
 
@@ -34,6 +35,7 @@ Confidence levels:
 | Semantic value requires real provider | 2 | 0004 | 0005 | Medium |
 | Possible file input friction | 1 | 0005 | 0005 | Low |
 | Unsupported claims amplified across artifacts | 1 | 0006 | 0006 | Low |
+| Same protocol/input can show different epistemic behavior across model/provider configurations | 1 | 0007 | 0007 | Low |
 
 ## Current Reading
 
