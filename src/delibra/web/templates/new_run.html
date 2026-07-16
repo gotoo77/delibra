@@ -32,6 +32,8 @@
           <option
             value="{{ provider.id }}"
             data-model-required="{{ 'true' if provider.model_required else 'false' }}"
+            data-model-list="{{ 'models-' ~ provider.id if provider.models else '' }}"
+            data-model-placeholder="{{ provider.model_placeholder }}"
             {{ 'selected' if form.provider == provider.id else '' }}
           >
             {{ provider.label }} - {{ provider.status }}
@@ -56,19 +58,28 @@
       {% endfor %}
     </div>
 
-    <label data-model-field>
-      Model
-      <input name="model" value="{{ form.model }}" maxlength="120" placeholder="mistral or qwen3:4b" list="ollama-models">
-      {% if ollama_models %}
-        <datalist id="ollama-models">
-          {% for model in ollama_models %}
+    {% for provider in provider_options %}
+      {% if provider.models %}
+        <datalist id="models-{{ provider.id }}">
+          {% for model in provider.models %}
             <option value="{{ model }}"></option>
           {% endfor %}
         </datalist>
-        <span class="field-help">Ollama models detected: {{ ollama_models | join(', ') }}</span>
-      {% else %}
-        <span class="field-help">No Ollama model was detected by the local provider diagnostic.</span>
       {% endif %}
+    {% endfor %}
+
+    <label data-model-field>
+      Model
+      <input name="model" value="{{ form.model }}" maxlength="120" data-model-input>
+      {% for provider in provider_options %}
+        {% if provider.model_required %}
+          <span
+            class="field-help"
+            data-model-help="{{ provider.id }}"
+            {{ 'hidden' if form.provider != provider.id else '' }}
+          >{{ provider.model_help }}</span>
+        {% endif %}
+      {% endfor %}
     </label>
 
     <div class="preset-details">

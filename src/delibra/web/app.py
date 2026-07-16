@@ -264,7 +264,6 @@ def _new_run_context(
         "presets": presets,
         "preset_details": describe_presets(presets),
         "provider_options": provider_options,
-        "ollama_models": _models_for_provider(provider_options, "ollama"),
         "form": form or {
             "preset": "",
             "provider": "mock",
@@ -345,13 +344,6 @@ def _provider_from_form(form: dict[str, str]) -> ProviderConfig:
         id=provider,  # type: ignore[arg-type]
         model=None if model == "" else model,
     )
-
-
-def _models_for_provider(provider_options, provider_id: str) -> tuple[str, ...]:
-    for option in provider_options:
-        if option.id == provider_id:
-            return option.models
-    return ()
 
 
 async def _event_stream(manager: ExecutionManager, execution_id: str):

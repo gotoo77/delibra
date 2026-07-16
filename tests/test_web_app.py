@@ -64,18 +64,26 @@ class WebAppTests(unittest.TestCase):
                 "delibra.web.app.assess_local_runtime",
                 return_value=LocalRuntimeAssessment(diagnostics=diagnostics),
             ):
-                with mock.patch.dict(
-                    "os.environ",
-                    {"OPENAI_API_KEY": "secret-value-12345"},
-                    clear=True,
+                with mock.patch(
+                    "delibra.app.run_config.list_openai_models",
+                    return_value=("gpt-5", "gpt-5-mini"),
                 ):
-                    response = client.get("/runs/new")
+                    with mock.patch.dict(
+                        "os.environ",
+                        {"OPENAI_API_KEY": "secret-value-12345"},
+                        clear=True,
+                    ):
+                        response = client.get("/runs/new")
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("OpenAI - configured", response.text)
         self.assertNotIn("secret-value-12345", response.text)
+        self.assertIn("OpenAI models detected: gpt-5, gpt-5-mini", response.text)
+        self.assertIn('<option value="gpt-5"></option>', response.text)
         self.assertIn("Ollama models detected: mistral:latest, qwen3:4b", response.text)
         self.assertIn('<option value="qwen3:4b"></option>', response.text)
+        self.assertIn('data-model-list="models-openai"', response.text)
+        self.assertIn('data-model-list="models-ollama"', response.text)
         self.assertIn('data-provider-select', response.text)
         self.assertIn('data-model-required="false"', response.text)
         self.assertIn('data-model-required="true"', response.text)

@@ -31,6 +31,10 @@ class AppRunConfigTests(unittest.TestCase):
                 "OPENAI_API_KEY": "secret-value",
                 "OPENAI_MODEL": "gpt-test",
             },
+            openai_model_transport=lambda _base_url, _api_key, _timeout: (
+                "gpt-5",
+                "gpt-5-mini",
+            ),
         )
 
         by_id = {option.id: option for option in options}
@@ -38,6 +42,8 @@ class AppRunConfigTests(unittest.TestCase):
         self.assertEqual(by_id["openai"].status, "configured")
         self.assertIn("API credentials", by_id["openai"].detail)
         self.assertNotIn("secret-value", by_id["openai"].detail)
+        self.assertEqual(by_id["openai"].models, ("gpt-5", "gpt-5-mini"))
+        self.assertTrue(by_id["openai"].model_required)
         self.assertEqual(by_id["ollama"].status, "reachable")
         self.assertEqual(by_id["ollama"].models, ("mistral:latest", "qwen3:4b"))
 
