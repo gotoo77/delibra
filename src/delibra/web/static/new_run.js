@@ -1,18 +1,28 @@
 (function () {
   const presetSelect = document.querySelector('[data-preset-select]');
   const presetDetails = Array.from(document.querySelectorAll('[data-preset-detail]'));
+  const presetEmpty = document.querySelector('[data-preset-empty]');
+  let previousSelected = null;
 
   function syncPresetDetail() {
     if (!(presetSelect instanceof HTMLSelectElement)) {
       return;
     }
     const selected = presetSelect.value;
+    const changed = selected !== previousSelected;
+    previousSelected = selected;
+    if (presetEmpty instanceof HTMLElement) {
+      presetEmpty.hidden = selected !== "";
+    }
     for (const detail of presetDetails) {
       if (!(detail instanceof HTMLDetailsElement)) {
         continue;
       }
       const isSelected = detail.dataset.presetDetail === selected;
-      detail.open = isSelected && selected !== "";
+      detail.hidden = !isSelected;
+      if (isSelected && selected !== "" && changed) {
+        detail.open = true;
+      }
     }
   }
 

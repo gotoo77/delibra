@@ -13,17 +13,63 @@
   <form method="post" action="{{ url_for('create_run') }}" class="form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
-    <label>
-      Preset
-      <select name="preset" required data-preset-select>
-        <option value="">Select a preset</option>
-        {% for preset in presets %}
-          <option value="{{ preset.name }}" {{ 'selected' if form.preset == preset.name else '' }}>
-            {{ preset.name }} - {{ preset.protocol_id }}@{{ preset.version }}
-          </option>
+    <div class="preset-layout">
+      <label class="preset-control">
+        Preset
+        <select name="preset" required data-preset-select>
+          <option value="">Select a preset</option>
+          {% for preset in presets %}
+            <option value="{{ preset.name }}" {{ 'selected' if form.preset == preset.name else '' }}>
+              {{ preset.name }}@{{ preset.version }}
+            </option>
+          {% endfor %}
+        </select>
+      </label>
+
+      <div class="preset-details">
+        <h2>Preset details</h2>
+        <p class="muted" data-preset-empty {{ 'hidden' if form.preset else '' }}>Select a preset to inspect its steps.</p>
+        {% for preset in preset_details %}
+          <details
+            data-preset-detail="{{ preset.name }}"
+            {{ 'open' if form.preset == preset.name else '' }}
+            {{ 'hidden' if form.preset != preset.name else '' }}
+          >
+            <summary>{{ preset.name }}@{{ preset.version }}</summary>
+            <p class="muted">{{ preset.description }}</p>
+            {% if preset.roles %}
+              <p><strong>Roles:</strong> {{ preset.roles | join(', ') }}</p>
+            {% endif %}
+            <ol class="protocol-steps">
+              {% for step in preset.steps %}
+                <li class="protocol-step">
+                  <strong>{{ step.id }}</strong>
+                  <dl>
+                    <div>
+                      <dt>Kind</dt>
+                      <dd>{{ step.kind }}</dd>
+                    </div>
+                    <div>
+                      <dt>Roles</dt>
+                      <dd>{{ step.roles | join(', ') if step.roles else 'none' }}</dd>
+                    </div>
+                    <div>
+                      <dt>Inputs</dt>
+                      <dd>{{ step.inputs | join(', ') if step.inputs else 'none' }}</dd>
+                    </div>
+                    <div>
+                      <dt>Produces</dt>
+                      <dd>{{ step.output }} ({{ step.output_kind }})</dd>
+                    </div>
+                  </dl>
+                  <p>{{ step.instruction_preview }}</p>
+                </li>
+              {% endfor %}
+            </ol>
+          </details>
         {% endfor %}
-      </select>
-    </label>
+      </div>
+    </div>
 
     <label>
       Provider
@@ -81,45 +127,6 @@
         {% endif %}
       {% endfor %}
     </label>
-
-    <div class="preset-details">
-      <h2>Protocol preview</h2>
-      {% for preset in preset_details %}
-        <details data-preset-detail="{{ preset.name }}" {{ 'open' if form.preset == preset.name else '' }}>
-          <summary>{{ preset.name }} - {{ preset.protocol_id }}@{{ preset.version }}</summary>
-          <p class="muted">{{ preset.description }}</p>
-          {% if preset.roles %}
-            <p><strong>Roles:</strong> {{ preset.roles | join(', ') }}</p>
-          {% endif %}
-          <ol class="protocol-steps">
-            {% for step in preset.steps %}
-              <li class="protocol-step">
-                <strong>{{ step.id }}</strong>
-                <dl>
-                  <div>
-                    <dt>Kind</dt>
-                    <dd>{{ step.kind }}</dd>
-                  </div>
-                  <div>
-                    <dt>Roles</dt>
-                    <dd>{{ step.roles | join(', ') if step.roles else 'none' }}</dd>
-                  </div>
-                  <div>
-                    <dt>Inputs</dt>
-                    <dd>{{ step.inputs | join(', ') if step.inputs else 'none' }}</dd>
-                  </div>
-                  <div>
-                    <dt>Produces</dt>
-                    <dd>{{ step.output }} ({{ step.output_kind }})</dd>
-                  </div>
-                </dl>
-                <p>{{ step.instruction_preview }}</p>
-              </li>
-            {% endfor %}
-          </ol>
-        </details>
-      {% endfor %}
-    </div>
 
     <label>
       Input text
