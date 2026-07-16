@@ -21,22 +21,22 @@
           "label": "Installer editable",
           "icon": "🧩",
           "key": "e",
-          "argv": ["python3", "-m", "pip", "install", "-e", "."],
-          "desc": "Installe la commande delibra dans l environnement courant"
+          "argv": ["uv", "pip", "install", "-e", "."],
+          "desc": "Installe la commande delibra en editable dans l environnement uv"
         },
         {
           "label": "Tests",
           "icon": "🧪",
           "key": "t",
-          "argv": ["python3", "-m", "unittest"]
+          "argv": ["uv", "run", "python", "-m", "unittest"]
         },
         {
           "label": "Check complet",
           "icon": "✅",
           "key": "c",
           "commands": [
-            ["python3", "-m", "unittest"],
-            ["python3", "-m", "compileall", "src", "tests", "spikes"]
+            ["uv", "run", "python", "-m", "unittest"],
+            ["uv", "run", "python", "-m", "compileall", "src", "tests", "spikes"]
           ],
           "desc": "Tests unitaires et compilation Python"
         },
@@ -50,14 +50,14 @@
           "label": "Spike 0",
           "icon": "🧪",
           "key": "s",
-          "argv": ["python3", "spikes/spike_0_artifact_derivation.py"],
+          "argv": ["uv", "run", "python", "spikes/spike_0_artifact_derivation.py"],
           "desc": "Lance le prototype disposable d artifact derivation"
         },
         {
           "label": "Smoke Lot 5",
           "icon": "🧱",
           "key": "m",
-          "argv": ["python3", "-m", "delibra.runtime.smoke", "tests/fixtures/rfc_protocol.yaml"],
+          "argv": ["uv", "run", "python", "-m", "delibra.runtime.smoke", "tests/fixtures/rfc_protocol.yaml"],
           "desc": "Cree un run, un artifact, une trace et affiche le JSON"
         },
         {
@@ -104,25 +104,25 @@
           "label": "Aide",
           "icon": "❔",
           "key": "h",
-          "argv": ["delibra", "--help"]
+          "argv": ["uv", "run", "delibra", "--help"]
         },
         {
           "label": "Aide validate",
           "icon": "🧭",
           "key": "v",
-          "argv": ["delibra", "validate", "--help"]
+          "argv": ["uv", "run", "delibra", "validate", "--help"]
         },
         {
           "label": "Aide run",
           "icon": "▶️",
           "key": "r",
-          "argv": ["delibra", "run", "--help"]
+          "argv": ["uv", "run", "delibra", "run", "--help"]
         },
         {
           "label": "Validate fixture",
           "icon": "✅",
           "key": "d",
-          "argv": ["delibra", "validate", "--protocol", "tests/fixtures/rfc_protocol.yaml"],
+          "argv": ["uv", "run", "delibra", "validate", "--protocol", "tests/fixtures/rfc_protocol.yaml"],
           "desc": "Parse le fixture YAML et affiche le JSON canonique"
         },
         {
@@ -130,6 +130,8 @@
           "icon": "▶️",
           "key": "u",
           "argv": [
+            "uv",
+            "run",
             "delibra",
             "run",
             "--protocol",
