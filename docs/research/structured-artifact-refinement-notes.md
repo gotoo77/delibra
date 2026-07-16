@@ -243,3 +243,74 @@ contain known disqualifying patterns or missing fields before final synthesis.
 Experiment note: the Ollama model used in these runs is not recoverable from
 `run.json` or `trace.json`; the CLI resolves it from `OLLAMA_MODEL`, and Delibra
 keeps provider/model metadata outside durable artifacts by design.
+
+## Domain-Specific Validation Boundary
+
+The current `puzzle_spec` work is an experimental pilot for validating
+domain-specific structured artifacts. It is not a proposal to make Delibra a
+puzzle-design system, and it is not an accepted runtime architecture decision.
+
+The puzzle is the instrument of the experiment, not the abstraction.
+
+Context:
+
+- real provider outputs violated explicit puzzle-design constraints while still
+  producing plausible prose;
+- `validate_puzzle_spec` now rejects those failures deterministically;
+- `delibra validate-puzzle-spec` exposes that boundary as a public, scriptable
+  CLI without invoking an LLM or changing runtime core.
+
+Experimental pipeline under investigation:
+
+```text
+provider output
+  -> strict structured extraction
+  -> contract-specific validation
+  -> stable validation report
+  -> promotion or explicit stop
+```
+
+Ownership boundary:
+
+- Delibra core may transport artifacts, payloads, artifact identity,
+  provenance, declared output kinds, and perhaps generic validation outcomes if
+  future evidence justifies them.
+- Delibra core must not contain puzzle-specific semantics or rules.
+- The application or domain layer owns contracts such as `puzzle_spec`,
+  extraction policy for those contracts, validators, domain error codes, and
+  promotion criteria derived from domain validation.
+
+Rules such as `ANSWER_NOT_EXPLICIT` and
+`VALIDATION_METHOD_NOT_BUILDABLE` are application-owned. They should not move
+into the runtime core merely because the puzzle experiment needs them.
+
+Questions this experiment may inform:
+
+- How is a provider payload converted into a strict structured document?
+- How are extraction failures distinguished from contract violations?
+- Should rejected candidates remain durable artifacts?
+- How is validation provenance represented?
+- What prevents an invalid candidate from being promoted?
+- Is a generic validation result contract eventually justified?
+
+Non-goals for the next tranche:
+
+- generic artifact validation;
+- a runtime validator registry;
+- a new `StepKind`;
+- tolerant extraction from prose;
+- automatic repair loops;
+- promotion after extraction failure;
+- treating all artifact quality as deterministically measurable.
+
+Next experimental tranche:
+
+Use `puzzle_spec` as a pilot for validating domain-specific structured artifacts
+extracted from provider payloads.
+
+Expected outcomes:
+
+- strict JSON plus valid `puzzle_spec` produces an accepted candidate;
+- strict JSON plus invalid `puzzle_spec` produces a stable invalid validation
+  report;
+- invalid JSON content produces a distinct extraction error report.
