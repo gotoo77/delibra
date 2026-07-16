@@ -137,6 +137,7 @@ def create_app(
             {
                 "execution": execution,
                 "result_key": _result_key(settings.experiments_root, execution),
+                "execution_terminal": _is_terminal_execution(execution),
             },
         )
 
@@ -380,7 +381,7 @@ async def _event_stream(manager: ExecutionManager, execution_id: str):
                 "artifact_count": execution.artifact_count,
             },
         )
-        if execution.status in {"completed", "failed"}:
+        if _is_terminal_execution(execution):
             return
         await asyncio.sleep(0.75)
 
@@ -416,3 +417,7 @@ def _result_key(root: Path, execution: WebExecution) -> str | None:
         return execution.run_path.parent.relative_to(root).as_posix() or "."
     except ValueError:
         return None
+
+
+def _is_terminal_execution(execution: WebExecution) -> bool:
+    return execution.status in {"completed", "failed"}

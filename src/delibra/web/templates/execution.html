@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Execution{% endblock %}
 {% block content %}
-<section class="execution" data-events-url="{{ url_for('execution_events', execution_id=execution.id) }}">
+<section
+  class="execution"
+  {% if not execution_terminal %}data-events-url="{{ url_for('execution_events', execution_id=execution.id) }}"{% endif %}
+>
   <h1>Execution</h1>
   <dl class="summary">
     <div><dt>Status</dt><dd id="execution-status">{{ execution.status }}</dd></div>

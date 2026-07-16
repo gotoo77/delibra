@@ -135,6 +135,54 @@ class WebAppTests(unittest.TestCase):
             self.assertIn("code_review@0.1.0", detail.text)
             self.assertIn("Raw payload JSON", detail.text)
 
+    def test_completed_execution_page_does_not_reopen_progress_stream(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            client = TestClient(create_app(experiments_root=Path(tmp) / "experiments"))
+            response = self._post_run(
+                client,
+                {
+                    "preset": "code_review",
+                    "provider": "mock",
+                    "input_text": "Review this change.",
+                    "output_dir": "terminal/page",
+                    "show_progress": "on",
+                },
+            )
+            execution = self._wait_for_execution(client.app.state.manager, response.headers["location"])
+
+            page = client.get(response.headers["location"])
+
+            self.assertEqual(execution.status, "completed")
+            self.assertEqual(page.status_code, 200)
+            self.assertIn("completed", page.text)
+            self.assertIn("Open result", page.text)
+            self.assertNotIn("data-events-url", page.text)
+
+    def test_completed_event_stream_emits_terminal_status_once_and_closes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            client = TestClient(create_app(experiments_root=Path(tmp) / "experiments"))
+            response = self._post_run(
+                client,
+                {
+                    "preset": "code_review",
+                    "provider": "mock",
+                    "input_text": "Review this change.",
+                    "output_dir": "terminal/events",
+                    "show_progress": "on",
+                },
+            )
+            self._wait_for_execution(client.app.state.manager, response.headers["location"])
+
+            stream = client.get(response.headers["location"] + "/events")
+
+            self.assertEqual(stream.status_code, 200)
+            self.assertEqual(stream.text.count("event: status"), 1)
+            self.assertIn('"status": "completed"', stream.text)
+            self.assertLess(
+                stream.text.rindex("event: status"),
+                len(stream.text),
+            )
+
     def test_payload_content_is_rendered_as_readable_text_before_raw_json(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "experiments"
@@ -270,6 +318,10 @@ class WebAppTests(unittest.TestCase):
             self.assertNotIn("Traceback", execution.error or "")
             self.assertNotIn("secret-value-12345", execution.error or "")
             self.assertIn("[redacted]", execution.error or "")
+            page = client.get(response.headers["location"])
+            self.assertEqual(page.status_code, 200)
+            self.assertIn("failed", page.text)
+            self.assertNotIn("data-events-url", page.text)
 
     def test_provider_errors_from_real_builder_are_deferred_to_background_execution(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
