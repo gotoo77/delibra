@@ -101,11 +101,11 @@
         {% endfor %}
       </select>
     </label>
-    <div class="provider-options" aria-label="Provider diagnostics">
+    <div class="provider-options" aria-label="Selected provider diagnostics">
       {% for provider in provider_options %}
         <article
           class="provider-option"
-          data-provider-detail="{{ provider.id }}"
+          data-provider-selected-detail="{{ provider.id }}"
           {{ 'hidden' if form.provider != provider.id else '' }}
         >
           <div>
@@ -128,6 +128,32 @@
         </article>
       {% endfor %}
     </div>
+    <details class="provider-catalog">
+      <summary>Show available providers</summary>
+      <div class="provider-options" aria-label="Available providers">
+        {% for provider in provider_options %}
+          <article class="provider-option">
+            <div>
+              <strong>{{ provider.label }}</strong>
+              <span class="muted">{{ provider.detail }}</span>
+            </div>
+            <span class="badge {{ 'ok' if provider.status in ['ready', 'configured', 'reachable'] else 'warn' }}">{{ provider.status }}</span>
+            {% if provider.models %}
+              <details class="model-list">
+                <summary>{{ provider.models | length }} visible models</summary>
+                <div class="model-chips">
+                  {% for model in provider.models %}
+                    <span>{{ model }}</span>
+                  {% endfor %}
+                </div>
+              </details>
+            {% elif provider.model_required %}
+              <p>Model must be chosen explicitly for this provider.</p>
+            {% endif %}
+          </article>
+        {% endfor %}
+      </div>
+    </details>
 
     {% for provider in provider_options %}
       {% if provider.models %}

@@ -84,8 +84,10 @@ class WebAppTests(unittest.TestCase):
         self.assertIn("2 Ollama models detected", response.text)
         self.assertIn('<option value="qwen3:4b"></option>', response.text)
         self.assertNotIn("Visible models: mistral:latest, qwen3:4b", response.text)
-        self.assertIn('data-provider-detail="openai"', response.text)
-        self.assertIn('data-provider-detail="ollama"', response.text)
+        self.assertIn('data-provider-selected-detail="openai"', response.text)
+        self.assertIn('data-provider-selected-detail="ollama"', response.text)
+        self.assertIn("Show available providers", response.text)
+        self.assertNotIn("<details class=\"provider-catalog\" open", response.text)
         self.assertIn('data-model-list="models-openai"', response.text)
         self.assertIn('data-model-list="models-ollama"', response.text)
         self.assertIn('data-provider-select', response.text)
@@ -193,6 +195,65 @@ class WebAppTests(unittest.TestCase):
                 len(stream.text),
             )
 
+    def test_ollama_post_preserves_submitted_model_in_run_request(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "experiments"
+            client = TestClient(create_app(experiments_root=root))
+            captured = []
+
+            def fake_run(request):
+                captured.append(request)
+                raise RuntimeError("stop after request capture")
+
+            with mock.patch("delibra.web.execution_manager.run_protocol_application", fake_run):
+                response = self._post_run(
+                    client,
+                    {
+                        "preset": "code_review",
+                        "provider": "ollama",
+                        "model": "mistral:latest",
+                        "input_text": "Review this change.",
+                        "output_dir": "ollama/model-submit",
+                        "show_progress": "on",
+                    },
+                )
+                self.assertEqual(response.status_code, 303)
+                execution = self._wait_for_execution(
+                    client.app.state.manager,
+                    response.headers["location"],
+                )
+
+            self.assertEqual(execution.status, "failed")
+            self.assertEqual(len(captured), 1)
+            self.assertEqual(captured[0].provider.id, "ollama")
+            self.assertEqual(captured[0].provider.model, "mistral:latest")
+
+    def test_openai_post_preserves_submitted_model_in_run_request(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            client = TestClient(create_app(experiments_root=Path(tmp) / "experiments"))
+            captured = []
+
+            def fake_run(request):
+                captured.append(request)
+                raise RuntimeError("stop after request capture")
+
+            with mock.patch("delibra.web.execution_manager.run_protocol_application", fake_run):
+                response = self._post_run(
+                    client,
+                    {
+                        "preset": "code_review",
+                        "provider": "openai",
+                        "model": "gpt-5-mini",
+                        "input_text": "Review this change.",
+                        "output_dir": "openai/model-submit",
+                    },
+                )
+                self.assertEqual(response.status_code, 303)
+                self._wait_for_execution(client.app.state.manager, response.headers["location"])
+
+            self.assertEqual(len(captured), 1)
+            self.assertEqual(captured[0].provider.id, "openai")
+            self.assertEqual(captured[0].provider.model, "gpt-5-mini")
 
     def test_post_preserves_submitted_language_in_run_request(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -238,6 +299,49 @@ class WebAppTests(unittest.TestCase):
             self.assertIn("unsupported language: de", response.text)
             self.assertIn("Review this change.", response.text)
 
+    def test_missing_model_returns_clear_inline_validation_and_preserves_values(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            client = TestClient(create_app(experiments_root=Path(tmp) / "experiments"))
+            response = self._post_run(
+                client,
+                {
+                    "preset": "code_review",
+                    "provider": "ollama",
+                    "model": "",
+                    "input_text": "Review this change.",
+                    "output_dir": "ollama/missing-model",
+                },
+            )
+
+            self.assertEqual(response.status_code, 400)
+            self.assertIn("model is required for ollama", response.text)
+            self.assertRegex(response.text, r'value="ollama"[\s\S]*selected')
+            self.assertIn('value="ollama/missing-model"', response.text)
+            self.assertIn("Review this change.", response.text)
+
+    def test_existing_output_directory_returns_specific_validation_error(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "experiments"
+            existing = root / "local" / "mistral"
+            existing.mkdir(parents=True)
+            (existing / "run.json").write_text("{}", encoding="utf-8")
+            client = TestClient(create_app(experiments_root=root))
+
+            response = self._post_run(
+                client,
+                {
+                    "preset": "code_review",
+                    "provider": "ollama",
+                    "model": "mistral:latest",
+                    "input_text": "Review this change.",
+                    "output_dir": "local/mistral",
+                },
+            )
+
+            self.assertEqual(response.status_code, 400)
+            self.assertIn("output directory already contains run.json or trace.json", response.text)
+            self.assertIn('value="mistral:latest"', response.text)
+
     def test_payload_content_is_rendered_as_readable_text_before_raw_json(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "experiments"
@@ -263,7 +367,6 @@ class WebAppTests(unittest.TestCase):
             self.assertIn("<dt>confidence</dt>", response.text)
             self.assertIn("0.82", response.text)
             self.assertIn("<dt>notes</dt>", response.text)
-
 
     def test_legacy_run_without_language_renders_not_recorded(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

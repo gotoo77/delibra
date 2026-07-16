@@ -110,7 +110,7 @@ def describe_provider_options(
                 status="unknown",
                 detail="No Ollama diagnostic result is available.",
                 model_required=True,
-                model_placeholder="mistral:latest or qwen3:4b",
+                model_placeholder="Ollama model id",
                 model_help="No Ollama model was detected by the local provider diagnostic.",
             )
         )
@@ -123,7 +123,7 @@ def describe_provider_options(
                 detail=f"Reachable at {ollama_status.base_url}; {len(ollama_status.models)} visible model(s).",
                 models=ollama_status.models,
                 model_required=True,
-                model_placeholder="mistral:latest or qwen3:4b",
+                model_placeholder="Ollama model id",
                 model_help=_model_help("Ollama", ollama_status.models),
             )
         )
@@ -136,7 +136,7 @@ def describe_provider_options(
                 detail=ollama_status.recovery_hint
                 or f"Reachable at {ollama_status.base_url}, but no models were reported.",
                 model_required=True,
-                model_placeholder="mistral:latest or qwen3:4b",
+                model_placeholder="Ollama model id",
                 model_help="No Ollama model was detected by the local provider diagnostic.",
             )
         )
@@ -149,7 +149,7 @@ def describe_provider_options(
                 detail=ollama_status.recovery_hint
                 or f"Ollama was not reachable at {ollama_status.base_url}.",
                 model_required=True,
-                model_placeholder="mistral:latest or qwen3:4b",
+                model_placeholder="Ollama model id",
                 model_help="No Ollama model was detected by the local provider diagnostic.",
             )
         )
@@ -170,7 +170,10 @@ def list_openai_models(base_url: str, api_key: str, timeout_seconds: float) -> t
     try:
         with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
             body = response.read().decode("utf-8")
-    except (urllib.error.HTTPError, urllib.error.URLError, OSError, TimeoutError):
+    except urllib.error.HTTPError as exc:
+        exc.close()
+        return ()
+    except (urllib.error.URLError, OSError, TimeoutError):
         return ()
     try:
         parsed = json.loads(body)

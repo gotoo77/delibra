@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import io
+import urllib.error
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from delibra.app.local_diagnostics import LocalDiagnostics, LocalProviderStatus
 from delibra.app.presets import PresetInfo
-from delibra.app.run_config import describe_preset, describe_provider_options
+from delibra.app.run_config import describe_preset, describe_provider_options, list_openai_models
 
 
 class AppRunConfigTests(unittest.TestCase):
@@ -46,6 +49,22 @@ class AppRunConfigTests(unittest.TestCase):
         self.assertTrue(by_id["openai"].model_required)
         self.assertEqual(by_id["ollama"].status, "reachable")
         self.assertEqual(by_id["ollama"].models, ("mistral:latest", "qwen3:4b"))
+
+    def test_openai_model_discovery_closes_http_error_response(self) -> None:
+        body = io.BytesIO(b'{"error":"unauthorized"}')
+        error = urllib.error.HTTPError(
+            url="https://api.openai.test/models",
+            code=401,
+            msg="Unauthorized",
+            hdrs={},
+            fp=body,
+        )
+
+        with mock.patch("urllib.request.urlopen", side_effect=error):
+            models = list_openai_models("https://api.openai.test", "bad-key", 0.1)
+
+        self.assertEqual(models, ())
+        self.assertTrue(body.closed)
 
     def test_preset_detail_summarizes_protocol_structure(self) -> None:
         detail = describe_preset(

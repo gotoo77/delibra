@@ -276,6 +276,22 @@ input[type="checkbox"] {
   gap: 10px;
 }
 
+.provider-catalog {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.provider-catalog > summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-weight: 650;
+}
+
+.provider-catalog[open] > summary {
+  margin-bottom: 10px;
+}
+
 .provider-option {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

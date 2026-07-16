@@ -10,7 +10,7 @@ from delibra.protocol_loader import load_protocol_yaml
 
 _ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_PRESET_DIR = _ROOT / "presets"
-_PRESET_NAME_RE = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_-]*$")
+_PRESET_NAME_RE = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.-]*$")
 
 
 class PresetError(ValueError):

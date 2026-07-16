@@ -38,9 +38,21 @@
   const modelInput = modelField?.querySelector('[data-model-input]');
   const modelRequiredMarker = modelField?.querySelector('[data-model-required-marker]');
   const modelHelps = Array.from(document.querySelectorAll('[data-model-help]'));
-  const providerDetails = Array.from(document.querySelectorAll('[data-provider-detail]'));
+  const providerDetails = Array.from(document.querySelectorAll('[data-provider-selected-detail]'));
   if (!(providerSelect instanceof HTMLSelectElement) || !(modelInput instanceof HTMLInputElement)) {
     return;
+  }
+
+  function firstListedModel(listId) {
+    if (listId === "") {
+      return "";
+    }
+    const list = document.getElementById(listId);
+    if (!(list instanceof HTMLDataListElement)) {
+      return "";
+    }
+    const firstOption = list.querySelector("option");
+    return firstOption instanceof HTMLOptionElement ? firstOption.value : "";
   }
 
   function syncModelField() {
@@ -62,6 +74,9 @@
     } else {
       modelInput.removeAttribute("list");
     }
+    if (selected?.value === "ollama" && modelRequired && modelInput.value.trim() === "") {
+      modelInput.value = firstListedModel(modelList);
+    }
     for (const help of modelHelps) {
       if (!(help instanceof HTMLElement)) {
         continue;
@@ -72,11 +87,12 @@
       if (!(detail instanceof HTMLElement)) {
         continue;
       }
-      detail.hidden = detail.dataset.providerDetail !== selected?.value;
+      detail.hidden = detail.dataset.providerSelectedDetail !== selected?.value;
     }
   }
 
   providerSelect.addEventListener("change", syncModelField);
+  providerSelect.form?.addEventListener("submit", syncModelField);
   syncModelField();
 })();
 
