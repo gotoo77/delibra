@@ -10,6 +10,7 @@
 - [AI Systems Engineering](implementation/ai-systems-engineering.md)
 - [Measurement Notes](measurement-notes.md)
 - [Local Runtime Experience Design Review](design-reviews/local-runtime-experience.md)
+- [Delibra Observatory Design Review](design-reviews/delibra-observatory.md)
 
 ## Presets
 
