@@ -220,6 +220,13 @@ label {
   gap: 8px;
 }
 
+.checkbox-field {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 10px;
+}
+
 input,
 select,
 textarea {
@@ -231,6 +238,82 @@ textarea {
   background: var(--panel);
   color: var(--text);
   font: inherit;
+}
+
+input[type="checkbox"] {
+  width: 18px;
+  min-height: 18px;
+  height: 18px;
+  padding: 0;
+}
+
+.field-help {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 400;
+}
+
+.provider-options {
+  display: grid;
+  gap: 10px;
+}
+
+.provider-option {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 12px;
+}
+
+.provider-option > div {
+  min-width: 0;
+}
+
+.provider-option strong,
+.provider-option span:not(.badge) {
+  display: block;
+}
+
+.provider-option p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.preset-details {
+  display: grid;
+  gap: 10px;
+}
+
+.preset-details h2 {
+  margin: 0;
+}
+
+.protocol-steps {
+  display: grid;
+  gap: 10px;
+  padding-left: 22px;
+}
+
+.protocol-step {
+  padding-left: 4px;
+}
+
+.protocol-step dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.protocol-step p {
+  margin-bottom: 0;
+  color: var(--muted);
+  overflow-wrap: anywhere;
 }
 
 textarea,

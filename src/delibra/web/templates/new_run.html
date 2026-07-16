@@ -15,7 +15,7 @@
 
     <label>
       Preset
-      <select name="preset" required>
+      <select name="preset" required data-preset-select>
         <option value="">Select a preset</option>
         {% for preset in presets %}
           <option value="{{ preset.name }}" {{ 'selected' if form.preset == preset.name else '' }}>
@@ -28,16 +28,83 @@
     <label>
       Provider
       <select name="provider" required>
-        {% for provider in providers %}
-          <option value="{{ provider }}" {{ 'selected' if form.provider == provider else '' }}>{{ provider }}</option>
+        {% for provider in provider_options %}
+          <option value="{{ provider.id }}" {{ 'selected' if form.provider == provider.id else '' }}>
+            {{ provider.label }} - {{ provider.status }}
+          </option>
         {% endfor %}
       </select>
     </label>
+    <div class="provider-options" aria-label="Provider diagnostics">
+      {% for provider in provider_options %}
+        <article class="provider-option">
+          <div>
+            <strong>{{ provider.label }}</strong>
+            <span class="muted">{{ provider.detail }}</span>
+          </div>
+          <span class="badge {{ 'ok' if provider.status in ['ready', 'configured', 'reachable'] else 'warn' }}">{{ provider.status }}</span>
+          {% if provider.models %}
+            <p>Visible models: {{ provider.models | join(', ') }}</p>
+          {% elif provider.model_required %}
+            <p>Model must be chosen explicitly for this provider.</p>
+          {% endif %}
+        </article>
+      {% endfor %}
+    </div>
 
     <label>
       Model
-      <input name="model" value="{{ form.model }}" maxlength="120" placeholder="mistral or qwen3:4b">
+      <input name="model" value="{{ form.model }}" maxlength="120" placeholder="mistral or qwen3:4b" list="ollama-models">
+      {% if ollama_models %}
+        <datalist id="ollama-models">
+          {% for model in ollama_models %}
+            <option value="{{ model }}"></option>
+          {% endfor %}
+        </datalist>
+        <span class="field-help">Ollama models detected: {{ ollama_models | join(', ') }}</span>
+      {% else %}
+        <span class="field-help">No Ollama model was detected by the local provider diagnostic.</span>
+      {% endif %}
     </label>
+
+    <div class="preset-details">
+      <h2>Protocol preview</h2>
+      {% for preset in preset_details %}
+        <details data-preset-detail="{{ preset.name }}" {{ 'open' if form.preset == preset.name else '' }}>
+          <summary>{{ preset.name }} - {{ preset.protocol_id }}@{{ preset.version }}</summary>
+          <p class="muted">{{ preset.description }}</p>
+          {% if preset.roles %}
+            <p><strong>Roles:</strong> {{ preset.roles | join(', ') }}</p>
+          {% endif %}
+          <ol class="protocol-steps">
+            {% for step in preset.steps %}
+              <li class="protocol-step">
+                <strong>{{ step.id }}</strong>
+                <dl>
+                  <div>
+                    <dt>Kind</dt>
+                    <dd>{{ step.kind }}</dd>
+                  </div>
+                  <div>
+                    <dt>Roles</dt>
+                    <dd>{{ step.roles | join(', ') if step.roles else 'none' }}</dd>
+                  </div>
+                  <div>
+                    <dt>Inputs</dt>
+                    <dd>{{ step.inputs | join(', ') if step.inputs else 'none' }}</dd>
+                  </div>
+                  <div>
+                    <dt>Produces</dt>
+                    <dd>{{ step.output }} ({{ step.output_kind }})</dd>
+                  </div>
+                </dl>
+                <p>{{ step.instruction_preview }}</p>
+              </li>
+            {% endfor %}
+          </ol>
+        </details>
+      {% endfor %}
+    </div>
 
     <label>
       Input text
@@ -49,7 +116,7 @@
       <input name="output_dir" value="{{ form.output_dir }}" maxlength="240" required placeholder="local-llm-default/mistral">
     </label>
 
-    <label class="inline">
+    <label class="checkbox-field">
       <input type="checkbox" name="show_progress" {{ 'checked' if form.show_progress else '' }}>
       Show progress
     </label>
@@ -60,4 +127,5 @@
     </div>
   </form>
 </section>
+<script src="{{ url_for('static', path='new_run.js') }}"></script>
 {% endblock %}

@@ -30,6 +30,14 @@ from delibra.app.models import (
 )
 from delibra.app.providers import build_llm_client
 from delibra.app.presets import PresetError, PresetInfo, list_presets, load_preset
+from delibra.app.run_config import (
+    SUPPORTED_PROVIDER_IDS,
+    PresetDetail,
+    ProtocolStepSummary,
+    ProviderOption,
+    describe_presets,
+    describe_provider_options,
+)
 from delibra.app.storage import load_run_json, load_trace_json, write_run_outputs
 
 __all__ = [
@@ -62,6 +70,12 @@ __all__ = [
     "LocalRuntimeIntent",
     "PresetError",
     "PresetInfo",
+    "PresetDetail",
+    "ProtocolStepSummary",
+    "ProviderOption",
     "assess_local_runtime",
+    "describe_presets",
+    "describe_provider_options",
+    "SUPPORTED_PROVIDER_IDS",
     "write_run_outputs",
 ]

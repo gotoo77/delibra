@@ -1,0 +1,521 @@
+{
+  "id": "trace_0001",
+  "run_id": "run_0001",
+  "events": [
+    {
+      "id": "evt_0001",
+      "type": "RunCreated",
+      "timestamp": "2026-07-16T11:34:01.634660Z",
+      "run_id": "run_0001",
+      "step_id": null,
+      "payload": {}
+    },
+    {
+      "id": "evt_0002",
+      "type": "PolicyApplied",
+      "timestamp": "2026-07-16T11:34:01.634870Z",
+      "run_id": "run_0001",
+      "step_id": null,
+      "payload": {
+        "policy_id": "default",
+        "mode": "standard",
+        "unit": "approx_token"
+      }
+    },
+    {
+      "id": "evt_0003",
+      "type": "StepStarted",
+      "timestamp": "2026-07-16T11:34:01.635019Z",
+      "run_id": "run_0001",
+      "step_id": "frame",
+      "payload": {
+        "step_id": "frame",
+        "inputs": [
+          "user_input"
+        ],
+        "resolved_artifact_ids": []
+      }
+    },
+    {
+      "id": "evt_0004",
+      "type": "PolicyDecision",
+      "timestamp": "2026-07-16T11:34:01.635300Z",
+      "run_id": "run_0001",
+      "step_id": "frame",
+      "payload": {
+        "step_id": "frame",
+        "role_id": "framer",
+        "action": "allow_call",
+        "reason": "within budget",
+        "estimated_input_units": 73,
+        "reserved_output_units": 0,
+        "estimated_total_units": 73,
+        "run_budget_remaining": null,
+        "step_budget_remaining": null,
+        "route_id": null,
+        "unit": "approx_token"
+      }
+    },
+    {
+      "id": "evt_0005",
+      "type": "MessageSent",
+      "timestamp": "2026-07-16T11:34:01.635359Z",
+      "run_id": "run_0001",
+      "step_id": "frame",
+      "payload": {
+        "message_id": "msg_0001"
+      }
+    },
+    {
+      "id": "evt_0006",
+      "type": "MessageReceived",
+      "timestamp": "2026-07-16T11:34:18.643003Z",
+      "run_id": "run_0001",
+      "step_id": "frame",
+      "payload": {
+        "message_id": "msg_response_0001"
+      }
+    },
+    {
+      "id": "evt_0007",
+      "type": "ArtifactCreated",
+      "timestamp": "2026-07-16T11:34:18.643178Z",
+      "run_id": "run_0001",
+      "step_id": "frame",
+      "payload": {
+        "artifact_id": "artifact_0001",
+        "output": "framing",
+        "kind": "framing",
+        "producer_role_id": "framer"
+      }
+    },
+    {
+      "id": "evt_0008",
+      "type": "StepCompleted",
+      "timestamp": "2026-07-16T11:34:18.643341Z",
+      "run_id": "run_0001",
+      "step_id": "frame",
+      "payload": {
+        "artifact_ids": [
+          "artifact_0001"
+        ]
+      }
+    },
+    {
+      "id": "evt_0009",
+      "type": "StepStarted",
+      "timestamp": "2026-07-16T11:34:18.643483Z",
+      "run_id": "run_0001",
+      "step_id": "role_reviews",
+      "payload": {
+        "step_id": "role_reviews",
+        "inputs": [
+          "framing"
+        ],
+        "resolved_artifact_ids": [
+          "artifact_0001"
+        ]
+      }
+    },
+    {
+      "id": "evt_0010",
+      "type": "PolicyDecision",
+      "timestamp": "2026-07-16T11:34:18.643694Z",
+      "run_id": "run_0001",
+      "step_id": "role_reviews",
+      "payload": {
+        "step_id": "role_reviews",
+        "role_id": "strategist",
+        "action": "allow_call",
+        "reason": "within budget",
+        "estimated_input_units": 1098,
+        "reserved_output_units": 0,
+        "estimated_total_units": 1098,
+        "run_budget_remaining": null,
+        "step_budget_remaining": null,
+        "route_id": null,
+        "unit": "approx_token"
+      }
+    },
+    {
+      "id": "evt_0011",
+      "type": "MessageSent",
+      "timestamp": "2026-07-16T11:34:18.643725Z",
+      "run_id": "run_0001",
+      "step_id": "role_reviews",
+      "payload": {
+        "message_id": "msg_0002"
+      }
+    },
+    {
+      "id": "evt_0012",
+      "type": "MessageReceived",
+      "timestamp": "2026-07-16T11:34:30.528676Z",
+      "run_id": "run_0001",
+      "step_id": "role_reviews",
+      "payload": {
+        "message_id": "msg_response_0002"
+      }
+    },
+    {
+      "id": "evt_0013",
+      "type": "ArtifactCreated",
+      "timestamp": "2026-07-16T11:34:30.528803Z",
+      "run_id": "run_0001",
+      "step_id": "role_reviews",
+      "payload": {
+        "artifact_id": "artifact_0002",
+        "output": "reviews",
+        "kind": "review",
+        "producer_role_id": "strategist"
+      }
+    },
+    {
+      "id": "evt_0014",
+      "type": "PolicyDecision",
+      "timestamp": "2026-07-16T11:34:30.529169Z",
+      "run_id": "run_0001",
+      "step_id": "role_reviews",
+      "payload": {
+        "step_id": "role_reviews",
+        "role_id": "risk_reviewer",
+        "action": "allow_call",
+        "reason": "within budget",
+        "estimated_input_units": 1100,
+        "reserved_output_units": 0,
+        "estimated_total_units": 1100,
+        "run_budget_remaining": null,
+        "step_budget_remaining": null,
+        "route_id": null,
+        "unit": "approx_token"
+      }
+    },
+    {
+      "id": "evt_0015",
+      "type": "MessageSent",
+      "timestamp": "2026-07-16T11:34:30.529280Z",
+      "run_id": "run_0001",
+      "step_id": "role_reviews",
+      "payload": {
+        "message_id": "msg_0003"
+      }
+    },
+    {
+      "id": "evt_0016",
+      "type": "MessageReceived",
+      "timestamp": "2026-07-16T11:34:43.187508Z",
+      "run_id": "run_0001",
+      "step_id": "role_reviews",
+      "payload": {
+        "message_id": "msg_response_0003"
+      }
+    },
+    {
+      "id": "evt_0017",
+      "type": "ArtifactCreated",
+      "timestamp": "2026-07-16T11:34:43.187659Z",
+      "run_id": "run_0001",
+      "step_id": "role_reviews",
+      "payload": {
+        "artifact_id": "artifact_0003",
+        "output": "reviews",
+        "kind": "review",
+        "producer_role_id": "risk_reviewer"
+      }
+    },
+    {
+      "id": "evt_0018",
+      "type": "PolicyDecision",
+      "timestamp": "2026-07-16T11:34:43.187994Z",
+      "run_id": "run_0001",
+      "step_id": "role_reviews",
+      "payload": {
+        "step_id": "role_reviews",
+        "role_id": "operator",
+        "action": "allow_call",
+        "reason": "within budget",
+        "estimated_input_units": 1101,
+        "reserved_output_units": 0,
+        "estimated_total_units": 1101,
+        "run_budget_remaining": null,
+        "step_budget_remaining": null,
+        "route_id": null,
+        "unit": "approx_token"
+      }
+    },
+    {
+      "id": "evt_0019",
+      "type": "MessageSent",
+      "timestamp": "2026-07-16T11:34:43.188034Z",
+      "run_id": "run_0001",
+      "step_id": "role_reviews",
+      "payload": {
+        "message_id": "msg_0004"
+      }
+    },
+    {
+      "id": "evt_0020",
+      "type": "MessageReceived",
+      "timestamp": "2026-07-16T11:34:57.911663Z",
+      "run_id": "run_0001",
+      "step_id": "role_reviews",
+      "payload": {
+        "message_id": "msg_response_0004"
+      }
+    },
+    {
+      "id": "evt_0021",
+      "type": "ArtifactCreated",
+      "timestamp": "2026-07-16T11:34:57.911806Z",
+      "run_id": "run_0001",
+      "step_id": "role_reviews",
+      "payload": {
+        "artifact_id": "artifact_0004",
+        "output": "reviews",
+        "kind": "review",
+        "producer_role_id": "operator"
+      }
+    },
+    {
+      "id": "evt_0022",
+      "type": "StepCompleted",
+      "timestamp": "2026-07-16T11:34:57.911949Z",
+      "run_id": "run_0001",
+      "step_id": "role_reviews",
+      "payload": {
+        "artifact_ids": [
+          "artifact_0002",
+          "artifact_0003",
+          "artifact_0004"
+        ]
+      }
+    },
+    {
+      "id": "evt_0023",
+      "type": "StepStarted",
+      "timestamp": "2026-07-16T11:34:57.912073Z",
+      "run_id": "run_0001",
+      "step_id": "critique_reviews",
+      "payload": {
+        "step_id": "critique_reviews",
+        "inputs": [
+          "framing",
+          "reviews"
+        ],
+        "resolved_artifact_ids": [
+          "artifact_0001",
+          "artifact_0002",
+          "artifact_0003",
+          "artifact_0004"
+        ]
+      }
+    },
+    {
+      "id": "evt_0024",
+      "type": "PolicyDecision",
+      "timestamp": "2026-07-16T11:34:57.912402Z",
+      "run_id": "run_0001",
+      "step_id": "critique_reviews",
+      "payload": {
+        "step_id": "critique_reviews",
+        "role_id": "critic",
+        "action": "allow_call",
+        "reason": "within budget",
+        "estimated_input_units": 4176,
+        "reserved_output_units": 0,
+        "estimated_total_units": 4176,
+        "run_budget_remaining": null,
+        "step_budget_remaining": null,
+        "route_id": null,
+        "unit": "approx_token"
+      }
+    },
+    {
+      "id": "evt_0025",
+      "type": "MessageSent",
+      "timestamp": "2026-07-16T11:34:57.912440Z",
+      "run_id": "run_0001",
+      "step_id": "critique_reviews",
+      "payload": {
+        "message_id": "msg_0005"
+      }
+    },
+    {
+      "id": "evt_0026",
+      "type": "MessageReceived",
+      "timestamp": "2026-07-16T11:35:15.813552Z",
+      "run_id": "run_0001",
+      "step_id": "critique_reviews",
+      "payload": {
+        "message_id": "msg_response_0005"
+      }
+    },
+    {
+      "id": "evt_0027",
+      "type": "ArtifactCreated",
+      "timestamp": "2026-07-16T11:35:15.813696Z",
+      "run_id": "run_0001",
+      "step_id": "critique_reviews",
+      "payload": {
+        "artifact_id": "artifact_0005",
+        "output": "critiques",
+        "kind": "critique",
+        "producer_role_id": "critic"
+      }
+    },
+    {
+      "id": "evt_0028",
+      "type": "PolicyDecision",
+      "timestamp": "2026-07-16T11:35:15.814032Z",
+      "run_id": "run_0001",
+      "step_id": "critique_reviews",
+      "payload": {
+        "step_id": "critique_reviews",
+        "role_id": "risk_reviewer",
+        "action": "allow_call",
+        "reason": "within budget",
+        "estimated_input_units": 4175,
+        "reserved_output_units": 0,
+        "estimated_total_units": 4175,
+        "run_budget_remaining": null,
+        "step_budget_remaining": null,
+        "route_id": null,
+        "unit": "approx_token"
+      }
+    },
+    {
+      "id": "evt_0029",
+      "type": "MessageSent",
+      "timestamp": "2026-07-16T11:35:15.814072Z",
+      "run_id": "run_0001",
+      "step_id": "critique_reviews",
+      "payload": {
+        "message_id": "msg_0006"
+      }
+    },
+    {
+      "id": "evt_0030",
+      "type": "MessageReceived",
+      "timestamp": "2026-07-16T11:35:27.868833Z",
+      "run_id": "run_0001",
+      "step_id": "critique_reviews",
+      "payload": {
+        "message_id": "msg_response_0006"
+      }
+    },
+    {
+      "id": "evt_0031",
+      "type": "ArtifactCreated",
+      "timestamp": "2026-07-16T11:35:27.869001Z",
+      "run_id": "run_0001",
+      "step_id": "critique_reviews",
+      "payload": {
+        "artifact_id": "artifact_0006",
+        "output": "critiques",
+        "kind": "critique",
+        "producer_role_id": "risk_reviewer"
+      }
+    },
+    {
+      "id": "evt_0032",
+      "type": "StepCompleted",
+      "timestamp": "2026-07-16T11:35:27.869218Z",
+      "run_id": "run_0001",
+      "step_id": "critique_reviews",
+      "payload": {
+        "artifact_ids": [
+          "artifact_0005",
+          "artifact_0006"
+        ]
+      }
+    },
+    {
+      "id": "evt_0033",
+      "type": "StepStarted",
+      "timestamp": "2026-07-16T11:35:27.869409Z",
+      "run_id": "run_0001",
+      "step_id": "final",
+      "payload": {
+        "step_id": "final",
+        "inputs": [
+          "framing",
+          "reviews",
+          "critiques"
+        ],
+        "resolved_artifact_ids": [
+          "artifact_0001",
+          "artifact_0002",
+          "artifact_0003",
+          "artifact_0004",
+          "artifact_0005",
+          "artifact_0006"
+        ]
+      }
+    },
+    {
+      "id": "evt_0034",
+      "type": "PolicyDecision",
+      "timestamp": "2026-07-16T11:35:27.869823Z",
+      "run_id": "run_0001",
+      "step_id": "final",
+      "payload": {
+        "step_id": "final",
+        "role_id": "synthesizer",
+        "action": "allow_call",
+        "reason": "within budget",
+        "estimated_input_units": 5756,
+        "reserved_output_units": 0,
+        "estimated_total_units": 5756,
+        "run_budget_remaining": null,
+        "step_budget_remaining": null,
+        "route_id": null,
+        "unit": "approx_token"
+      }
+    },
+    {
+      "id": "evt_0035",
+      "type": "MessageSent",
+      "timestamp": "2026-07-16T11:35:27.869882Z",
+      "run_id": "run_0001",
+      "step_id": "final",
+      "payload": {
+        "message_id": "msg_0007"
+      }
+    },
+    {
+      "id": "evt_0036",
+      "type": "MessageReceived",
+      "timestamp": "2026-07-16T11:35:39.781819Z",
+      "run_id": "run_0001",
+      "step_id": "final",
+      "payload": {
+        "message_id": "msg_response_0007"
+      }
+    },
+    {
+      "id": "evt_0037",
+      "type": "ArtifactCreated",
+      "timestamp": "2026-07-16T11:35:39.781950Z",
+      "run_id": "run_0001",
+      "step_id": "final",
+      "payload": {
+        "artifact_id": "artifact_0007",
+        "output": "final_synthesis",
+        "kind": "synthesis",
+        "producer_role_id": "synthesizer"
+      }
+    },
+    {
+      "id": "evt_0038",
+      "type": "StepCompleted",
+      "timestamp": "2026-07-16T11:35:39.782044Z",
+      "run_id": "run_0001",
+      "step_id": "final",
+      "payload": {
+        "artifact_ids": [
+          "artifact_0007"
+        ]
+      }
+    }
+  ]
+}

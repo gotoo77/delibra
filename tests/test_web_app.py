@@ -16,6 +16,8 @@ from delibra.web.app import DEFAULT_HOST, create_app
 from delibra.web.execution_manager import ExecutionLimitError, ExecutionManager
 from delibra.web.paths import resolve_web_output_paths
 from delibra.app.inputs import input_from_text
+from delibra.app.local_diagnostics import LocalDiagnostics, LocalProviderStatus
+from delibra.app.local_runtime import LocalRuntimeAssessment
 from delibra.app.models import ProviderConfig
 from delibra.app.presets import load_preset
 from delibra.app.run import RunProtocolApplicationRequest
@@ -40,6 +42,44 @@ class WebAppTests(unittest.TestCase):
 
     def test_default_host_is_localhost(self) -> None:
         self.assertEqual(DEFAULT_HOST, "127.0.0.1")
+
+    def test_new_run_page_renders_provider_diagnostics_and_protocol_preview(self) -> None:
+        diagnostics = LocalDiagnostics(
+            statuses=(
+                LocalProviderStatus(
+                    provider_id="ollama",
+                    label="Ollama",
+                    kind="ollama",
+                    base_url="http://localhost:11434",
+                    reachable=True,
+                    models=("mistral:latest", "qwen3:4b"),
+                    error=None,
+                    recovery_hint=None,
+                ),
+            )
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            client = TestClient(create_app(experiments_root=Path(tmp) / "experiments"))
+            with mock.patch(
+                "delibra.web.app.assess_local_runtime",
+                return_value=LocalRuntimeAssessment(diagnostics=diagnostics),
+            ):
+                with mock.patch.dict(
+                    "os.environ",
+                    {"OPENAI_API_KEY": "secret-value-12345"},
+                    clear=True,
+                ):
+                    response = client.get("/runs/new")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("OpenAI - configured", response.text)
+        self.assertNotIn("secret-value-12345", response.text)
+        self.assertIn("Ollama models detected: mistral:latest, qwen3:4b", response.text)
+        self.assertIn('<option value="qwen3:4b"></option>', response.text)
+        self.assertIn("Protocol preview", response.text)
+        self.assertIn("role_reviews", response.text)
+        self.assertIn("final_synthesis", response.text)
+        self.assertIn("new_run.js", response.text)
 
     def test_creates_mock_run_from_post_and_discovers_after_restart(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

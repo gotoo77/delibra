@@ -1,0 +1,10 @@
+Conçois un jeu de piste immersif dans un château médiéval abandonné pour 6 adultes. 
+
+Le jeu doit durer environ 2 heures.
+
+Il doit comporter 8 énigmes variées utilisant :
+- l'observation ;
+- la logique ;
+- quelques manipulations physiques simples.
+
+Le jeu doit raconter une histoire cohérente du début à la fin et se terminer par une révélation finale mémorable.

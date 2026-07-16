@@ -22,6 +22,11 @@ from delibra.app.local_runtime import LocalRuntimeIntent, assess_local_runtime
 from delibra.app.models import ProviderConfig, ProviderId
 from delibra.app.presets import PresetError, list_presets, load_preset
 from delibra.app.run import RunProtocolApplicationRequest
+from delibra.app.run_config import (
+    SUPPORTED_PROVIDER_IDS,
+    describe_presets,
+    describe_provider_options,
+)
 from delibra.web.execution_manager import ExecutionLimitError, ExecutionManager, WebExecution
 from delibra.web.paths import (
     WebPathError,
@@ -38,7 +43,6 @@ from delibra.web.paths import (
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8000
 DEFAULT_EXPERIMENTS_ROOT = "experiments"
-PROVIDER_IDS: tuple[ProviderId, ...] = ("mock", "openai", "ollama")
 MAX_FORM_BYTES = 128_000
 CSRF_COOKIE = "delibra_csrf"
 
@@ -253,9 +257,14 @@ def _new_run_context(
     form: dict[str, str] | None = None,
     errors: list[str] | None = None,
 ) -> dict[str, Any]:
+    presets = list_presets()
+    diagnostics = assess_local_runtime(LocalRuntimeIntent()).diagnostics
+    provider_options = describe_provider_options(diagnostics)
     return {
-        "presets": list_presets(),
-        "providers": PROVIDER_IDS,
+        "presets": presets,
+        "preset_details": describe_presets(presets),
+        "provider_options": provider_options,
+        "ollama_models": _models_for_provider(provider_options, "ollama"),
         "form": form or {
             "preset": "",
             "provider": "mock",
@@ -325,7 +334,7 @@ def _build_run_request(root: Path, form: dict[str, str]) -> RunProtocolApplicati
 
 def _provider_from_form(form: dict[str, str]) -> ProviderConfig:
     provider = form.get("provider", "mock").strip()
-    if provider not in PROVIDER_IDS:
+    if provider not in SUPPORTED_PROVIDER_IDS:
         raise ValueError(f"unsupported provider: {provider}")
     model = form.get("model", "").strip()
     if provider in {"openai", "ollama"} and model == "":
@@ -336,6 +345,13 @@ def _provider_from_form(form: dict[str, str]) -> ProviderConfig:
         id=provider,  # type: ignore[arg-type]
         model=None if model == "" else model,
     )
+
+
+def _models_for_provider(provider_options, provider_id: str) -> tuple[str, ...]:
+    for option in provider_options:
+        if option.id == provider_id:
+            return option.models
+    return ()
 
 
 async def _event_stream(manager: ExecutionManager, execution_id: str):
