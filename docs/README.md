@@ -13,6 +13,7 @@
 - [Delibra Observatory Design Review](design-reviews/delibra-observatory.md)
 - [Delibra Local Web UI Design Review](design-reviews/delibra-local-web-ui.md)
 - [Treasure Hunt Selection 0.2.0 Protocol Review](design-reviews/treasure-hunt-selection-0.2.0-protocol-review.md)
+- [Puzzle Spec Validation Experiment Review](design-reviews/puzzle-spec-validation-experiment-review.md)
 
 ## Experimental Observatory Helper
 
