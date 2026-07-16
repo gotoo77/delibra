@@ -135,6 +135,27 @@ delibra run \
 `OLLAMA_BASE_URL` defaults to `http://localhost:11434`.
 `OLLAMA_MAX_OUTPUT_TOKENS` maps to Ollama `options.num_predict`.
 
+Check local providers without installing or downloading anything:
+
+```bash
+delibra doctor local
+```
+
+`doctor local` is passive by default. It checks whether known local provider
+endpoints are reachable and whether they report installed models.
+
+Run an explicit minimal Ollama inference check:
+
+```bash
+delibra doctor local --check-inference --provider ollama --model llama3.2
+```
+
+If `--check-inference` is used without `--model`, Delibra uses `OLLAMA_MODEL`
+when it is set. Otherwise it lists visible models and explains that an explicit
+model is required. The inference check uses a short 10 second timeout and asks
+for a very small response. Delibra never installs Ollama, downloads models, or
+writes files from `doctor local`.
+
 Inspect canonical outputs:
 
 ```bash

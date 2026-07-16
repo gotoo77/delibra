@@ -14,6 +14,12 @@ from delibra.app.local_diagnostics import (
     LocalProviderStatus,
     diagnose_local_providers,
 )
+from delibra.app.local_runtime import (
+    LocalInferenceCheck,
+    LocalRuntimeAssessment,
+    LocalRuntimeIntent,
+    assess_local_runtime,
+)
 from delibra.app.models import (
     ProviderConfig,
     RunOutputTarget,
@@ -49,9 +55,13 @@ __all__ = [
     "load_preset",
     "load_trace_json",
     "LocalDiagnostics",
+    "LocalInferenceCheck",
     "LocalProviderProbe",
     "LocalProviderStatus",
+    "LocalRuntimeAssessment",
+    "LocalRuntimeIntent",
     "PresetError",
     "PresetInfo",
+    "assess_local_runtime",
     "write_run_outputs",
 ]

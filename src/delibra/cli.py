@@ -16,7 +16,12 @@ from delibra.app.inspection import (
 )
 from delibra.app.local_diagnostics import (
     LocalDiagnostics,
-    diagnose_local_providers,
+)
+from delibra.app.local_runtime import (
+    LocalInferenceCheck,
+    LocalRuntimeAssessment,
+    LocalRuntimeIntent,
+    assess_local_runtime,
 )
 from delibra.app.providers import build_llm_client
 from delibra.app.presets import PresetError, PresetInfo, list_presets, load_preset
@@ -129,6 +134,20 @@ def build_parser() -> argparse.ArgumentParser:
         "local",
         help="diagnose local LLM providers",
         description="Diagnose local LLM providers without installing or writing files.",
+    )
+    doctor_local.add_argument(
+        "--check-inference",
+        action="store_true",
+        help="run an explicit minimal local inference check; no install or download",
+    )
+    doctor_local.add_argument(
+        "--provider",
+        choices=("ollama",),
+        help="local provider to check actively; default ollama when checking inference",
+    )
+    doctor_local.add_argument(
+        "--model",
+        help="explicit installed model to use for --check-inference",
     )
     doctor_local.set_defaults(handler=_doctor_local)
 
@@ -317,9 +336,20 @@ def _analyze_run(args: argparse.Namespace) -> int:
     return 0
 
 
-def _doctor_local(_args: argparse.Namespace) -> int:
-    diagnostics = diagnose_local_providers()
-    print(_render_local_diagnostics(diagnostics))
+def _doctor_local(args: argparse.Namespace) -> int:
+    if args.check_inference:
+        assessment = assess_local_runtime(
+            LocalRuntimeIntent(
+                operation="check_inference",
+                provider_id="ollama" if args.provider is None else args.provider,
+                model=args.model,
+            )
+        )
+        print(_render_local_runtime_assessment(assessment))
+        return 0
+
+    assessment = assess_local_runtime(LocalRuntimeIntent())
+    print(_render_local_diagnostics(assessment.diagnostics))
     return 0
 
 
@@ -507,7 +537,7 @@ def _render_local_diagnostics(diagnostics: LocalDiagnostics) -> str:
     lines.extend(["", "Next steps"])
     if found_any:
         lines.append(
-            "- Choose a provider and model explicitly in an execution policy route."
+            "- Choose a provider and model explicitly before running Delibra."
         )
         lines.append("- Delibra did not install anything or choose a model for you.")
     else:
@@ -517,6 +547,71 @@ def _render_local_diagnostics(diagnostics: LocalDiagnostics) -> str:
         )
         lines.append("- Delibra did not install anything or write any files.")
     return "\n".join(lines)
+
+
+def _render_local_runtime_assessment(assessment: LocalRuntimeAssessment) -> str:
+    lines = [_render_local_diagnostics(assessment.diagnostics)]
+    if assessment.inference_checks:
+        lines.extend(["", "Inference check", "---------------"])
+        for check in assessment.inference_checks:
+            lines.extend(_render_inference_check(check))
+    return "\n".join(lines)
+
+
+def _render_inference_check(check: LocalInferenceCheck) -> list[str]:
+    if not check.attempted:
+        return _render_skipped_inference_check(check)
+    lines = [f"- {check.provider_id}: {_inference_status_label(check.status)}"]
+    if check.model is not None:
+        lines.append(f"  model: {check.model}")
+    lines.append(f"  attempted: {'yes' if check.attempted else 'no'}")
+    if check.duration_seconds is not None:
+        lines.append(f"  duration_seconds: {check.duration_seconds:g}")
+    if check.error is not None:
+        lines.append(f"  cause: {check.error}")
+    if check.recovery_hint is not None:
+        lines.append(f"  recovery: {check.recovery_hint}")
+    return lines
+
+
+def _render_skipped_inference_check(check: LocalInferenceCheck) -> list[str]:
+    lines = [
+        "Skipped.",
+        f"Reason: {_skipped_inference_reason(check)}",
+        "No inference was attempted.",
+    ]
+    if check.model is not None:
+        lines.insert(1, f"Model: {check.model}")
+    if check.error is not None:
+        lines.append(f"Cause: {check.error}")
+    if check.recovery_hint is not None:
+        lines.append(f"Next step: {check.recovery_hint}")
+    return lines
+
+
+def _skipped_inference_reason(check: LocalInferenceCheck) -> str:
+    if check.status == "server_unreachable":
+        return "Ollama server is not reachable."
+    if check.status == "no_models":
+        return "Ollama is reachable but reported no visible models."
+    if check.status == "model_missing":
+        return "The requested model is not visible to Ollama."
+    if check.status == "not_attempted":
+        return "No explicit model was provided."
+    return _inference_status_label(check.status)
+
+
+def _inference_status_label(status: str) -> str:
+    return {
+        "not_attempted": "not attempted",
+        "server_unreachable": "server unreachable",
+        "no_models": "no models visible",
+        "model_missing": "model missing",
+        "timeout": "timeout",
+        "provider_error": "provider error",
+        "invalid_response": "invalid or empty response",
+        "succeeded": "succeeded",
+    }.get(status, status)
 
 
 def _not_implemented(command: str):

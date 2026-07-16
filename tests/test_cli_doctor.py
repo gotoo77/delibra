@@ -9,6 +9,7 @@ from pathlib import Path
 from unittest import mock
 
 from delibra.app.local_diagnostics import LocalDiagnostics, LocalProviderStatus
+from delibra.app.local_runtime import LocalInferenceCheck, LocalRuntimeAssessment
 from delibra.cli import main
 
 
@@ -31,7 +32,10 @@ class CliDoctorTests(unittest.TestCase):
 
         stdout = io.StringIO()
         stderr = io.StringIO()
-        with mock.patch("delibra.cli.diagnose_local_providers", return_value=diagnostics):
+        with mock.patch(
+            "delibra.cli.assess_local_runtime",
+            return_value=LocalRuntimeAssessment(diagnostics=diagnostics),
+        ):
             with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
                 code = main(["doctor", "local"])
 
@@ -59,7 +63,10 @@ class CliDoctorTests(unittest.TestCase):
         )
 
         stdout = io.StringIO()
-        with mock.patch("delibra.cli.diagnose_local_providers", return_value=diagnostics):
+        with mock.patch(
+            "delibra.cli.assess_local_runtime",
+            return_value=LocalRuntimeAssessment(diagnostics=diagnostics),
+        ):
             with contextlib.redirect_stdout(stdout):
                 code = main(["doctor", "local"])
 
@@ -79,8 +86,8 @@ class CliDoctorTests(unittest.TestCase):
             try:
                 os.chdir(tmp)
                 with mock.patch(
-                    "delibra.cli.diagnose_local_providers",
-                    return_value=diagnostics,
+                    "delibra.cli.assess_local_runtime",
+                    return_value=LocalRuntimeAssessment(diagnostics=diagnostics),
                 ):
                     with contextlib.redirect_stdout(stdout):
                         code = main(["doctor", "local"])
@@ -100,6 +107,123 @@ class CliDoctorTests(unittest.TestCase):
 
         self.assertEqual(raised.exception.code, 0)
         self.assertIn("Diagnose local LLM providers", stdout.getvalue())
+        self.assertIn("--check-inference", stdout.getvalue())
+        self.assertIn("--model", stdout.getvalue())
+
+    def test_doctor_local_check_inference_renders_success(self) -> None:
+        assessment = LocalRuntimeAssessment(
+            diagnostics=LocalDiagnostics(
+                statuses=(
+                    LocalProviderStatus(
+                        provider_id="ollama",
+                        label="Ollama",
+                        kind="ollama",
+                        base_url="http://localhost:11434",
+                        reachable=True,
+                        models=("llama3.2",),
+                        error=None,
+                        recovery_hint=None,
+                    ),
+                )
+            ),
+            inference_checks=(
+                LocalInferenceCheck(
+                    provider_id="ollama",
+                    attempted=True,
+                    status="succeeded",
+                    model="llama3.2",
+                    duration_seconds=0.25,
+                    error=None,
+                    recovery_hint=None,
+                ),
+            ),
+        )
+
+        stdout = io.StringIO()
+        with mock.patch("delibra.cli.assess_local_runtime", return_value=assessment):
+            with contextlib.redirect_stdout(stdout):
+                code = main(
+                    [
+                        "doctor",
+                        "local",
+                        "--check-inference",
+                        "--provider",
+                        "ollama",
+                        "--model",
+                        "llama3.2",
+                    ]
+                )
+
+        self.assertEqual(code, 0)
+        output = stdout.getvalue()
+        self.assertIn("Inference check", output)
+        self.assertIn("- ollama: succeeded", output)
+        self.assertIn("model: llama3.2", output)
+        self.assertIn("attempted: yes", output)
+
+    def test_doctor_local_check_inference_renders_timeout_without_traceback(self) -> None:
+        assessment = LocalRuntimeAssessment(
+            diagnostics=LocalDiagnostics(statuses=()),
+            inference_checks=(
+                LocalInferenceCheck(
+                    provider_id="ollama",
+                    attempted=True,
+                    status="timeout",
+                    model="llama3.2",
+                    error="timed out",
+                    recovery_hint="Try a smaller model.",
+                    duration_seconds=10.0,
+                ),
+            ),
+        )
+
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        with mock.patch("delibra.cli.assess_local_runtime", return_value=assessment):
+            with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                code = main(["doctor", "local", "--check-inference", "--model", "llama3.2"])
+
+        self.assertEqual(code, 0)
+        self.assertEqual(stderr.getvalue(), "")
+        self.assertIn("- ollama: timeout", stdout.getvalue())
+        self.assertIn("cause: timed out", stdout.getvalue())
+        self.assertNotIn("Traceback", stdout.getvalue())
+
+    def test_doctor_local_check_inference_does_not_create_files(self) -> None:
+        assessment = LocalRuntimeAssessment(
+            diagnostics=LocalDiagnostics(statuses=()),
+            inference_checks=(
+                LocalInferenceCheck(
+                    provider_id="ollama",
+                    attempted=False,
+                    status="server_unreachable",
+                    model="llama3.2",
+                    error="connection refused",
+                    recovery_hint="Start Ollama.",
+                ),
+            ),
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            previous_cwd = os.getcwd()
+            before = set(Path(tmp).iterdir())
+            stdout = io.StringIO()
+            try:
+                os.chdir(tmp)
+                with mock.patch("delibra.cli.assess_local_runtime", return_value=assessment):
+                    with contextlib.redirect_stdout(stdout):
+                        code = main(
+                            ["doctor", "local", "--check-inference", "--model", "llama3.2"]
+                        )
+            finally:
+                os.chdir(previous_cwd)
+            after = set(Path(tmp).iterdir())
+
+        self.assertEqual(code, 0)
+        self.assertEqual(before, after)
+        self.assertIn("Ollama server is not reachable", stdout.getvalue())
+        self.assertIn("Skipped.", stdout.getvalue())
+        self.assertIn("No inference was attempted.", stdout.getvalue())
 
 
 if __name__ == "__main__":

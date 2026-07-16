@@ -245,6 +245,6 @@ def _connection_recovery_hint(probe: LocalProviderProbe, base_url: str) -> str:
             "OLLAMA_BASE_URL before running Delibra."
         )
     return (
-        f"Start a local OpenAI-compatible server at {base_url}, or configure a "
-        "policy route with the base URL you actually use."
+        f"Start a local OpenAI-compatible server at {base_url}, or rerun the "
+        "diagnostic against the base URL your local server actually uses."
     )
