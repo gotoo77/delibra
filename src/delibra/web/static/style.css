@@ -253,6 +253,13 @@ input[type="checkbox"] {
   font-weight: 400;
 }
 
+.required-marker {
+  margin-left: 6px;
+  color: var(--warn);
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
 .preset-layout {
   display: grid;
   grid-template-columns: minmax(280px, 1fr) minmax(320px, 1fr);

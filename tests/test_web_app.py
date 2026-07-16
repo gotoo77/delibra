@@ -91,6 +91,8 @@ class WebAppTests(unittest.TestCase):
         self.assertIn('data-model-required="false"', response.text)
         self.assertIn('data-model-required="true"', response.text)
         self.assertIn('data-model-field', response.text)
+        self.assertIn('data-model-required-marker', response.text)
+        self.assertIn("required</span>", response.text)
         self.assertIn("Preset details", response.text)
         self.assertNotIn("Protocol preview", response.text)
         self.assertIn("role_reviews", response.text)

@@ -36,6 +36,7 @@
   const providerSelect = document.querySelector('[data-provider-select]');
   const modelField = document.querySelector('[data-model-field]');
   const modelInput = modelField?.querySelector('[data-model-input]');
+  const modelRequiredMarker = modelField?.querySelector('[data-model-required-marker]');
   const modelHelps = Array.from(document.querySelectorAll('[data-model-help]'));
   const providerDetails = Array.from(document.querySelectorAll('[data-provider-detail]'));
   if (!(providerSelect instanceof HTMLSelectElement) || !(modelInput instanceof HTMLInputElement)) {
@@ -51,7 +52,11 @@
       modelField.hidden = !modelRequired;
     }
     modelInput.disabled = !modelRequired;
+    modelInput.required = modelRequired;
     modelInput.placeholder = placeholder;
+    if (modelRequiredMarker instanceof HTMLElement) {
+      modelRequiredMarker.hidden = !modelRequired;
+    }
     if (modelRequired && modelList !== "") {
       modelInput.setAttribute("list", modelList);
     } else {

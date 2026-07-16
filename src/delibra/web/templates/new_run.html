@@ -126,7 +126,7 @@
     {% endfor %}
 
     <label data-model-field>
-      Model
+      <span>Model <span class="required-marker" data-model-required-marker>required</span></span>
       <input name="model" value="{{ form.model }}" maxlength="120" data-model-input>
       {% for provider in provider_options %}
         {% if provider.model_required %}
