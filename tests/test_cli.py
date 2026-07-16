@@ -114,6 +114,15 @@ class CliSmokeTests(unittest.TestCase):
         self.assertIn("--protocol", result.stdout)
         self.assertIn("parse a protocol definition", result.stdout.lower())
 
+    def test_validate_puzzle_spec_help_runs_successfully(self) -> None:
+        result = run_cli("validate-puzzle-spec", "--help")
+
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("usage: delibra validate-puzzle-spec", result.stdout)
+        self.assertIn("--input-json", result.stdout)
+        self.assertIn("--json", result.stdout)
+        self.assertIn("puzzle_spec JSON document", result.stdout)
+
     def test_run_help_runs_successfully(self) -> None:
         result = run_cli("run", "--help")
 
@@ -196,6 +205,123 @@ class CliSmokeTests(unittest.TestCase):
 
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("--protocol", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
+
+    def test_validate_puzzle_spec_accepts_valid_document(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "valid-puzzle.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "scope": "single_fixed_spot",
+                        "answer": "AUBEPINE",
+                        "validation_method": "Compare the assembled cards with the printed answer slot.",
+                        "player_separation_allowed": False,
+                        "materials": ["letter cards", "answer slot card"],
+                        "forbidden_mechanisms": ["lock"],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            result = run_cli("validate-puzzle-spec", "--input-json", str(path))
+
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stderr, "")
+        self.assertIn("valid: true", result.stdout)
+        self.assertIn("errors: 0", result.stdout)
+
+    def test_validate_puzzle_spec_rejects_invalid_document_with_error_codes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "invalid-puzzle.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "scope": "castle_wide_hunt",
+                        "answer": "Find the order of the relics and escape the castle.",
+                        "validation_method": "The secret door opens automatically.",
+                        "player_separation_allowed": True,
+                        "materials": [],
+                        "forbidden_mechanisms": [],
+                        "description": "Relics are scattered throughout the castle.",
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            result = run_cli("validate-puzzle-spec", "--input-json", str(path))
+
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(result.stderr, "")
+        self.assertIn("valid: false", result.stdout)
+        self.assertIn("ANSWER_NOT_EXPLICIT [answer]", result.stdout)
+        self.assertIn("VALIDATION_METHOD_NOT_BUILDABLE [validation_method]", result.stdout)
+        self.assertIn("DISQUALIFYING_SCOPE_PATTERN [$]", result.stdout)
+        self.assertIn("FORBIDDEN_MECHANISM_MISSING [forbidden_mechanisms]", result.stdout)
+
+    def test_validate_puzzle_spec_can_render_json_result(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "invalid-puzzle.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "scope": "single_fixed_spot",
+                        "answer": "",
+                        "validation_method": "",
+                        "player_separation_allowed": False,
+                        "materials": ["cards"],
+                        "forbidden_mechanisms": ["lock"],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            result = run_cli("validate-puzzle-spec", "--input-json", str(path), "--json")
+
+        self.assertEqual(result.returncode, 1)
+        payload = json.loads(result.stdout)
+        self.assertEqual(
+            payload,
+            {
+                "valid": False,
+                "errors": [
+                    {
+                        "code": "ANSWER_MISSING",
+                        "field": "answer",
+                        "message": "The answer must be a non-empty string.",
+                    },
+                    {
+                        "code": "VALIDATION_METHOD_MISSING",
+                        "field": "validation_method",
+                        "message": "The validation method must be a non-empty string.",
+                    },
+                ],
+            },
+        )
+
+    def test_validate_puzzle_spec_invalid_json_returns_usage_error(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "broken.json"
+            path.write_text("{", encoding="utf-8")
+
+            result = run_cli("validate-puzzle-spec", "--input-json", str(path))
+
+        self.assertEqual(result.returncode, 2)
+        self.assertEqual(result.stdout, "")
+        self.assertIn("invalid JSON", result.stderr)
+        self.assertIn("broken.json", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
+
+    def test_validate_puzzle_spec_missing_file_returns_usage_error(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "missing.json"
+
+            result = run_cli("validate-puzzle-spec", "--input-json", str(path))
+
+        self.assertEqual(result.returncode, 2)
+        self.assertEqual(result.stdout, "")
+        self.assertIn("validate-puzzle-spec", result.stderr)
+        self.assertIn("missing.json", result.stderr)
         self.assertNotIn("Traceback", result.stderr)
 
     def test_run_requires_arguments(self) -> None:

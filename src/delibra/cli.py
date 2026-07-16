@@ -39,6 +39,10 @@ from delibra.app.output_paths import (
     resolve_run_output_paths,
 )
 from delibra.app.presets import PresetError, PresetInfo, list_presets, load_preset
+from delibra.app.puzzle_spec import (
+    PuzzleSpecValidationResult,
+    validate_puzzle_spec,
+)
 from delibra.app.run import RunProtocolApplicationRequest, run_protocol_application
 from delibra.app.storage import load_run_json, load_trace_json
 from delibra.policy_loader import PolicyLoadError, load_policy_yaml
@@ -80,6 +84,23 @@ def build_parser() -> argparse.ArgumentParser:
         help="path to a protocol YAML file",
     )
     validate.set_defaults(handler=_validate)
+
+    validate_puzzle_spec_parser = subparsers.add_parser(
+        "validate-puzzle-spec",
+        help="validate an experimental puzzle_spec JSON document",
+        description="Validate an experimental puzzle_spec JSON document.",
+    )
+    validate_puzzle_spec_parser.add_argument(
+        "--input-json",
+        required=True,
+        help="path to a puzzle_spec JSON document",
+    )
+    validate_puzzle_spec_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="render machine-readable validation output",
+    )
+    validate_puzzle_spec_parser.set_defaults(handler=_validate_puzzle_spec)
 
     run = subparsers.add_parser(
         "run",
@@ -290,6 +311,28 @@ def _validate(args: argparse.Namespace) -> int:
 
     print(json.dumps(protocol.to_json(), indent=2))
     return 0
+
+
+def _validate_puzzle_spec(args: argparse.Namespace) -> int:
+    try:
+        with Path(args.input_json).open(encoding="utf-8") as file:
+            document = json.load(file)
+    except OSError as exc:
+        print(f"delibra validate-puzzle-spec: {exc}", file=sys.stderr)
+        return 2
+    except json.JSONDecodeError as exc:
+        print(
+            f"delibra validate-puzzle-spec: invalid JSON in {args.input_json}: {exc}",
+            file=sys.stderr,
+        )
+        return 2
+
+    result = validate_puzzle_spec(document)
+    if args.json:
+        print(json.dumps(_puzzle_spec_validation_json(result), indent=2, sort_keys=True))
+    else:
+        print(_render_puzzle_spec_validation(result))
+    return 0 if result.valid else 1
 
 
 def _run(args: argparse.Namespace) -> int:
@@ -620,6 +663,31 @@ def _render_presets_list(presets: tuple[PresetInfo, ...]) -> str:
             f"- {preset.description}"
         )
     return "\n".join(lines)
+
+
+def _render_puzzle_spec_validation(result: PuzzleSpecValidationResult) -> str:
+    if result.valid:
+        return "valid: true\nerrors: 0"
+    lines = ["valid: false", "errors:"]
+    lines.extend(
+        f"- {error.code} [{error.field}]: {error.message}"
+        for error in result.errors
+    )
+    return "\n".join(lines)
+
+
+def _puzzle_spec_validation_json(result: PuzzleSpecValidationResult) -> dict[str, object]:
+    return {
+        "valid": result.valid,
+        "errors": [
+            {
+                "code": error.code,
+                "field": error.field,
+                "message": error.message,
+            }
+            for error in result.errors
+        ],
+    }
 
 
 def _render_run_analysis(analysis: RunAnalysis) -> str:
