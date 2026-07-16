@@ -37,6 +37,7 @@
   const modelField = document.querySelector('[data-model-field]');
   const modelInput = modelField?.querySelector('[data-model-input]');
   const modelHelps = Array.from(document.querySelectorAll('[data-model-help]'));
+  const providerDetails = Array.from(document.querySelectorAll('[data-provider-detail]'));
   if (!(providerSelect instanceof HTMLSelectElement) || !(modelInput instanceof HTMLInputElement)) {
     return;
   }
@@ -61,6 +62,12 @@
         continue;
       }
       help.hidden = help.dataset.modelHelp !== selected?.value;
+    }
+    for (const detail of providerDetails) {
+      if (!(detail instanceof HTMLElement)) {
+        continue;
+      }
+      detail.hidden = detail.dataset.providerDetail !== selected?.value;
     }
   }
 

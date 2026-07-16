@@ -295,6 +295,43 @@ input[type="checkbox"] {
   overflow-wrap: anywhere;
 }
 
+.model-list {
+  grid-column: 1 / -1;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.model-list summary {
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.model-list.compact {
+  margin-top: 2px;
+}
+
+.model-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 180px;
+  overflow: auto;
+  padding-top: 8px;
+}
+
+.model-chips span {
+  max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 8px;
+  background: color-mix(in srgb, var(--panel), var(--bg) 35%);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
 .preset-details {
   display: grid;
   gap: 10px;
