@@ -30,6 +30,11 @@ from delibra.app.models import (
 )
 from delibra.app.providers import build_llm_client
 from delibra.app.presets import PresetError, PresetInfo, list_presets, load_preset
+from delibra.app.puzzle_spec import (
+    PuzzleSpecValidationError,
+    PuzzleSpecValidationResult,
+    validate_puzzle_spec,
+)
 from delibra.app.run_config import (
     SUPPORTED_PROVIDER_IDS,
     PresetDetail,
@@ -43,6 +48,8 @@ from delibra.app.storage import load_run_json, load_trace_json, write_run_output
 __all__ = [
     "ArtifactDetail",
     "ProviderConfig",
+    "PuzzleSpecValidationError",
+    "PuzzleSpecValidationResult",
     "RunAnalysis",
     "RunInspection",
     "RunOutputTarget",
@@ -62,6 +69,7 @@ __all__ = [
     "load_run_json",
     "load_preset",
     "load_trace_json",
+    "validate_puzzle_spec",
     "LocalDiagnostics",
     "LocalInferenceCheck",
     "LocalProviderProbe",
