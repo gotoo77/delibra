@@ -1,0 +1,65 @@
+id: decision_record_structured_review
+version: 0.1.0
+description: Experimental protocol for producing a structured decision_record object.
+
+roles:
+  framer:
+    name: Framer
+    instruction: Restate the decision, options, constraints, assumptions, and stakes.
+  reviewer:
+    name: Reviewer
+    instruction: Review the decision for reasons, consequences, uncertainties, and pending conditions.
+  status_checker:
+    name: Status Checker
+    instruction: Check whether the decision status is accepted, rejected, proposed, or pending_review.
+  synthesizer:
+    name: Decision Record Synthesizer
+    instruction: Produce only the requested decision_record JSON object.
+
+steps:
+  - id: frame
+    kind: prompt
+    role: framer
+    roles: null
+    instruction: Frame the decision under review. Preserve pending approvals and non-accepted status when present.
+    inputs:
+      - user_input
+    produces:
+      output: framing
+      kind: framing
+  - id: review
+    kind: fanout
+    role: null
+    roles:
+      - reviewer
+      - status_checker
+    instruction: Review the framed decision. Identify required fields for a decision_record and preserve status exactly.
+    inputs:
+      - framing
+    produces:
+      output: reviews
+      kind: review
+  - id: final
+    kind: synthesize
+    role: synthesizer
+    roles: null
+    instruction: |
+      Produce only one valid JSON object. Do not use Markdown. Do not add prose before or after the JSON.
+
+      The JSON object must have exactly these fields:
+      - decision: non-empty string
+      - status: one of "proposed", "pending_review", "accepted", "rejected"
+      - options_considered: non-empty array of strings
+      - reasons: non-empty array of strings
+      - consequences: non-empty array of strings
+      - uncertainties: array of strings
+      - pending_conditions: array of strings
+
+      If approvals, reviews, or policy checks remain pending, status must be "pending_review", not "accepted".
+      Structural validity does not imply acceptance.
+    inputs:
+      - framing
+      - reviews
+    produces:
+      output: decision_record
+      kind: synthesis
